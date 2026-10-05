@@ -45,7 +45,7 @@ function spamCheck(body: Record<string, unknown>) {
 }
 
 export async function handleEligibility(req: Request) {
-  if (!rateLimit("eligibility", clientIp(req.headers), 5, 600)) {
+  if (!(await rateLimit("eligibility", clientIp(req.headers), 5, 600))) {
     return json({ ok: false, formError: "Too many requests from this connection. Please wait a few minutes and try again." }, 429);
   }
   const body = await readJson(req);
@@ -66,7 +66,7 @@ export async function handleEligibility(req: Request) {
 }
 
 export async function handleAgentInquiry(req: Request) {
-  if (!rateLimit("agent", clientIp(req.headers), 5, 600)) {
+  if (!(await rateLimit("agent", clientIp(req.headers), 5, 600))) {
     return json({ ok: false, formError: "Too many requests from this connection. Please wait a few minutes and try again." }, 429);
   }
   const body = await readJson(req);
@@ -79,12 +79,8 @@ export async function handleAgentInquiry(req: Request) {
   try {
     const id = newId();
     const d = parsed.data;
-    db()
-      .prepare(
-        "INSERT INTO agent_inquiries(id, is_test, name, email, brokerage, message, marketing_consent, created_at) VALUES(?,?,?,?,?,?,?,?)",
-      )
-      .run(id, effectiveMode() === "preview" ? 1 : 0, d.name, d.email.toLowerCase(), d.brokerage ?? null, d.message ?? null, d.marketingConsent ? 1 : 0, nowIso());
-    track("agent_inquiry", { subject: id });
+    await db.run("INSERT INTO agent_inquiries(id, is_test, name, email, brokerage, message, marketing_consent, created_at) VALUES(?,?,?,?,?,?,?,?)", id, effectiveMode() === "preview" ? 1 : 0, d.name, d.email.toLowerCase(), d.brokerage ?? null, d.message ?? null, d.marketingConsent ? 1 : 0, nowIso());
+    await track("agent_inquiry", { subject: id });
     await notifyOperator("New real estate agent inquiry", ["A real estate agent asked about closing gifts."], id);
     return json({ ok: true });
   } catch (err) {
@@ -95,14 +91,14 @@ export async function handleAgentInquiry(req: Request) {
 
 /** Accepts only known event names and locations. Anything else is dropped. */
 export async function handleEvent(req: Request) {
-  if (!rateLimit("event", clientIp(req.headers), 120, 60)) return new Response(null, { status: 204 });
+  if (!(await rateLimit("event", clientIp(req.headers), 120, 60))) return new Response(null, { status: 204 });
   const text = await req.text();
   if (text.length > 500) return new Response(null, { status: 204 });
   try {
     const body = JSON.parse(text) as { name?: unknown; location?: unknown };
     const name = (CLIENT_EVENTS as readonly unknown[]).includes(body.name) ? (body.name as (typeof CLIENT_EVENTS)[number]) : null;
     const location = (CTA_LOCATIONS as readonly unknown[]).includes(body.location) ? (body.location as string) : undefined;
-    if (name) track(name, { location });
+    if (name) await track(name, { location });
   } catch {
     /* ignore malformed beacons */
   }

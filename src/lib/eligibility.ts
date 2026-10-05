@@ -64,13 +64,9 @@ export async function submitInquiry(data: EligibilityData) {
   const now = nowIso();
   const status: InquiryStatus = data.listingStatus === "listed" ? "listed_not_eligible" : "pending_review";
 
-  db()
-    .prepare(
-      `INSERT INTO inquiries(id, ref_code, status, mode, is_test, name, email, phone, street, unit, city, state, zip,
+  await db.run(`INSERT INTO inquiries(id, ref_code, status, mode, is_test, name, email, phone, street, unit, city, state, zip,
         relationship, listing_status, listing_links, notes, service_consent_at, marketing_consent, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    )
-    .run(
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
       id,
       refCode,
       status,
@@ -94,7 +90,7 @@ export async function submitInquiry(data: EligibilityData) {
       now,
     );
 
-  track("eligibility_submitted", { subject: id });
+  await track("eligibility_submitted", { subject: id });
 
   const hi = `Hi ${firstName(data.name)},`;
   if (status === "listed_not_eligible") {
@@ -131,15 +127,13 @@ export async function submitInquiry(data: EligibilityData) {
   return { refCode, status };
 }
 
-export function findInquiry(idOrRef: string): InquiryRow | undefined {
-  return db()
-    .prepare("SELECT * FROM inquiries WHERE id = ? OR ref_code = ?")
-    .get(idOrRef, idOrRef.toUpperCase()) as InquiryRow | undefined;
+export async function findInquiry(idOrRef: string): Promise<InquiryRow | undefined> {
+  return await db.get("SELECT * FROM inquiries WHERE id = ? OR ref_code = ?", idOrRef, idOrRef.toUpperCase()) as InquiryRow | undefined;
 }
 
-export function inquiryByToken(token: string): InquiryRow | undefined {
+export async function inquiryByToken(token: string): Promise<InquiryRow | undefined> {
   if (!isWellFormedToken(token)) return undefined;
-  return db().prepare("SELECT * FROM inquiries WHERE access_token_hash = ?").get(hashToken(token)) as
+  return await db.get("SELECT * FROM inquiries WHERE access_token_hash = ?", hashToken(token)) as
     | InquiryRow
     | undefined;
 }
@@ -153,19 +147,15 @@ export function customerLink(token: string) {
  * approved request replaces the link (the old one stops working).
  */
 export async function approveInquiry(idOrRef: string, decidedBy: string, note?: string) {
-  const found = findInquiry(idOrRef);
+  const found = await findInquiry(idOrRef);
   if (!found) throw new Error("Inquiry not found");
   if (found.status !== "pending_review" && found.status !== "approved") {
     throw new Error(`Inquiry is ${found.status} and cannot be approved`);
   }
   const token = newAccessToken();
   const now = nowIso();
-  db()
-    .prepare(
-      "UPDATE inquiries SET status='approved', access_token_hash=?, decided_at=?, decided_by=?, decision_note=COALESCE(?, decision_note), updated_at=? WHERE id=?",
-    )
-    .run(hashToken(token), now, decidedBy, note ?? null, now, found.id);
-  track("eligibility_approved", { subject: found.id, isTest: Boolean(found.is_test) });
+  await db.run("UPDATE inquiries SET status='approved', access_token_hash=?, decided_at=?, decided_by=?, decision_note=COALESCE(?, decision_note), updated_at=? WHERE id=?", hashToken(token), now, decidedBy, note ?? null, now, found.id);
+  await track("eligibility_approved", { subject: found.id, isTest: Boolean(found.is_test) });
 
   const link = customerLink(token);
   const canPay = paymentProvider() !== "none";
@@ -194,15 +184,11 @@ export async function approveInquiry(idOrRef: string, decidedBy: string, note?: 
 }
 
 export async function declineInquiry(idOrRef: string, decidedBy: string, reason: DeclineReason, note?: string) {
-  const found = findInquiry(idOrRef);
+  const found = await findInquiry(idOrRef);
   if (!found) throw new Error("Inquiry not found");
   if (found.status === "paid") throw new Error("Inquiry is already paid; refund it instead");
   const now = nowIso();
-  db()
-    .prepare(
-      "UPDATE inquiries SET status='declined', access_token_hash=NULL, decided_at=?, decided_by=?, decision_note=?, updated_at=? WHERE id=?",
-    )
-    .run(now, decidedBy, note ? `${reason}: ${note}` : reason, now, found.id);
+  await db.run("UPDATE inquiries SET status='declined', access_token_hash=NULL, decided_at=?, decided_by=?, decision_note=?, updated_at=? WHERE id=?", now, decidedBy, note ? `${reason}: ${note}` : reason, now, found.id);
 
   await sendEmail({
     template: "declined",
@@ -220,14 +206,14 @@ export async function declineInquiry(idOrRef: string, decidedBy: string, reason:
 }
 
 /** Delete one inquiry and its unpaid checkout records. Paid orders are kept as business records. */
-export function deleteInquiry(idOrRef: string) {
-  const found = findInquiry(idOrRef);
+export async function deleteInquiry(idOrRef: string) {
+  const found = await findInquiry(idOrRef);
   if (!found) return false;
   if (found.status === "paid") throw new Error("Paid orders are business records; use the order deletion process in docs/DATA_HANDLING.md");
-  tx(() => {
-    db().prepare("DELETE FROM checkouts WHERE inquiry_id = ?").run(found.id);
-    db().prepare("DELETE FROM email_outbox WHERE related_id = ?").run(found.id);
-    db().prepare("DELETE FROM inquiries WHERE id = ?").run(found.id);
+  await tx(async (q) => {
+    await q.run("DELETE FROM checkouts WHERE inquiry_id = ?", found.id);
+    await q.run("DELETE FROM email_outbox WHERE related_id = ?", found.id);
+    await q.run("DELETE FROM inquiries WHERE id = ?", found.id);
   });
   return true;
 }

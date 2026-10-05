@@ -29,12 +29,12 @@ async function main() {
   switch (cmd) {
     case "list": {
       const status = args[0] ?? "pending_review";
-      const rows = db().prepare("SELECT * FROM inquiries WHERE status = ? ORDER BY created_at").all(status) as InquiryRow[];
+      const rows = await db.all("SELECT * FROM inquiries WHERE status = ? ORDER BY created_at", status) as InquiryRow[];
       console.log(rows.length ? rows.map(row).join("\n") : `No inquiries with status ${status}.`);
       break;
     }
     case "show": {
-      const i = findInquiry(args[0] ?? "");
+      const i = await findInquiry(args[0] ?? "");
       if (!i) throw new Error("Not found");
       console.log({ ...i, listing_links: JSON.parse(i.listing_links) });
       break;
@@ -57,21 +57,21 @@ async function main() {
       break;
     }
     case "delete": {
-      console.log(deleteInquiry(args[0] ?? "") ? "Deleted." : "Not found.");
+      console.log(await deleteInquiry(args[0] ?? "") ? "Deleted." : "Not found.");
       break;
     }
     case "purge": {
-      const r = purgeExpired({ dryRun: args.includes("--dry-run") });
+      const r = await purgeExpired({ dryRun: args.includes("--dry-run") });
       console.log(r);
       break;
     }
     case "funnel": {
-      const f = funnelSummary(args.includes("--include-test"));
+      const f = await funnelSummary(args.includes("--include-test"));
       console.log(f.counts);
       console.log(`Submitted to approved: ${f.approvalRate === null ? "n/a" : (f.approvalRate * 100).toFixed(1) + "%"}`);
       console.log(`Approved to purchased: ${f.eligibilityToPurchase === null ? "n/a" : (f.eligibilityToPurchase * 100).toFixed(1) + "%"}`);
-      const refunds = db().prepare("SELECT COUNT(*) n FROM orders WHERE status='refunded' AND is_test=0").get() as { n: number };
-      const paid = db().prepare("SELECT COUNT(*) n FROM orders WHERE is_test=0").get() as { n: number };
+      const refunds = await db.get("SELECT COUNT(*) n FROM orders WHERE status='refunded' AND is_test=0") as { n: number };
+      const paid = await db.get("SELECT COUNT(*) n FROM orders WHERE is_test=0") as { n: number };
       console.log(`Refunded orders: ${refunds.n} of ${paid.n}`);
       break;
     }

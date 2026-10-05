@@ -26,7 +26,7 @@ describe("funnel events", () => {
     await handleEvent(jsonRequest("/api/event", { name: "purchase_confirmed" })); // server-only event
     await handleEvent(jsonRequest("/api/event", { name: "eligibility_started", location: "somewhere-else" }));
     await handleEvent(jsonRequest("/api/event", { name: "<script>" }));
-    const rows = db().prepare("SELECT name, location FROM funnel_events ORDER BY id").all();
+    const rows = (await db.all("SELECT name, location FROM funnel_events ORDER BY id"));
     expect(rows).toEqual([
       { name: "cta_primary_click", location: "hero" },
       { name: "eligibility_started", location: null },
@@ -35,16 +35,16 @@ describe("funnel events", () => {
 
   it("never records personal information anywhere in the funnel table", async () => {
     await paidToken();
-    const dump = JSON.stringify(db().prepare("SELECT * FROM funnel_events").all());
+    const dump = JSON.stringify((await db.all("SELECT * FROM funnel_events")));
     for (const p of PII) expect(dump).not.toContain(p);
-    const names = (db().prepare("SELECT name FROM funnel_events ORDER BY id").all() as { name: string }[]).map((r) => r.name);
+    const names = ((await db.all("SELECT name FROM funnel_events ORDER BY id")) as { name: string }[]).map((r) => r.name);
     expect(names).toEqual(["eligibility_submitted", "eligibility_approved", "checkout_started", "purchase_confirmed"]);
   });
 
   it("does not log personal information when saving fails", async () => {
     const errors: string[] = [];
     vi.spyOn(console, "error").mockImplementation((...a) => void errors.push(a.join(" ")));
-    db().exec("DROP TABLE inquiries");
+    await db.exec("DROP TABLE inquiries");
     const res = await handleEligibility(jsonRequest("/api/eligibility", { ...VALID_INQUIRY, formToken: oldFormToken() }));
     expect(res.status).toBe(500);
     const body = await res.text();
@@ -68,7 +68,7 @@ describe("onboarding after payment", () => {
     const okText = await ok.text();
     for (const p of PII) expect(okText).not.toContain(p);
 
-    const order = customerByToken(token)!.order!;
+    const order = (await customerByToken(token))!.order!;
     expect(order.status).toBe("in_service");
     expect(order.street_view_consent).toBe(0);
     const days = (Date.parse(order.service_ends_at!) - Date.parse(order.intake_completed_at!)) / 86_400_000;
@@ -87,11 +87,11 @@ describe("onboarding after payment", () => {
 
   it("the order link emailed after payment also works, and raw tokens are never stored", async () => {
     const token = await paidToken();
-    const mail = db().prepare("SELECT text FROM email_outbox WHERE template='payment_confirmed'").get() as { text: string };
+    const mail = (await db.get("SELECT text FROM email_outbox WHERE template='payment_confirmed'")) as { text: string };
     const orderToken = mail.text.match(/\/c\/([A-Za-z0-9_-]{43})/)![1];
     expect(orderToken).not.toBe(token);
-    expect(customerByToken(orderToken)?.order).toBeDefined();
-    const dump = JSON.stringify([db().prepare("SELECT * FROM inquiries").all(), db().prepare("SELECT * FROM orders").all()]);
+    expect((await customerByToken(orderToken))?.order).toBeDefined();
+    const dump = JSON.stringify([(await db.all("SELECT * FROM inquiries")), (await db.all("SELECT * FROM orders"))]);
     expect(dump).not.toContain(token);
     expect(dump).not.toContain(orderToken);
   });
@@ -104,16 +104,16 @@ describe("agent inquiries and retention", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    expect(db().prepare("SELECT COUNT(*) n FROM agent_inquiries").get()).toEqual({ n: 1 });
+    expect((await db.get("SELECT COUNT(*) n FROM agent_inquiries"))).toEqual({ n: 1 });
   });
 
   it("purges expired declined requests but keeps paid orders", async () => {
     await paidToken();
     const res = await handleEligibility(jsonRequest("/api/eligibility", { ...VALID_INQUIRY, listingStatus: "listed", formToken: oldFormToken() }));
     expect(res.status).toBe(200);
-    db().prepare("UPDATE inquiries SET updated_at = '2000-01-01T00:00:00.000Z'").run();
-    const r = purgeExpired();
+    (await db.run("UPDATE inquiries SET updated_at = '2000-01-01T00:00:00.000Z'"));
+    const r = await purgeExpired();
     expect(r.inquiries).toBe(1);
-    expect(db().prepare("SELECT status FROM inquiries").all()).toEqual([{ status: "paid" }]);
+    expect((await db.all("SELECT status FROM inquiries"))).toEqual([{ status: "paid" }]);
   });
 });

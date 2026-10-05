@@ -21,15 +21,15 @@ describe("eligibility intake", () => {
     for (const p of PII) expect(text).not.toContain(p);
 
     const { db } = await import("@/lib/db");
-    const row = db().prepare("SELECT * FROM inquiries WHERE ref_code = ?").get(body.refCode) as Record<string, unknown>;
+    const row = (await db.get("SELECT * FROM inquiries WHERE ref_code = ?", body.refCode)) as Record<string, unknown>;
     expect(row.status).toBe("pending_review");
     expect(row.is_test).toBe(1);
     expect(row.marketing_consent).toBe(0);
     expect(row.access_token_hash).toBeNull();
 
-    const mail = db().prepare("SELECT template, status FROM email_outbox").all();
+    const mail = (await db.all("SELECT template, status FROM email_outbox"));
     expect(mail).toEqual([{ template: "inquiry_received", status: "held_preview" }]);
-    const ev = db().prepare("SELECT name FROM funnel_events").all();
+    const ev = (await db.all("SELECT name FROM funnel_events"));
     expect(ev).toEqual([{ name: "eligibility_submitted" }]);
   });
 
@@ -68,7 +68,7 @@ describe("eligibility intake", () => {
       ["authorizationConfirmed", "email", "listingLinks", "serviceConsent", "street", "zip"].sort(),
     );
     const { db } = await import("@/lib/db");
-    expect(db().prepare("SELECT COUNT(*) n FROM inquiries").get()).toEqual({ n: 0 });
+    expect((await db.get("SELECT COUNT(*) n FROM inquiries"))).toEqual({ n: 0 });
   });
 
   it("accepts a corrected resubmission after a validation failure", async () => {
@@ -91,7 +91,7 @@ describe("eligibility intake", () => {
     );
     expect(notJson.status).toBe(400);
     const { db } = await import("@/lib/db");
-    expect(db().prepare("SELECT COUNT(*) n FROM inquiries").get()).toEqual({ n: 0 });
+    expect((await db.get("SELECT COUNT(*) n FROM inquiries"))).toEqual({ n: 0 });
   });
 
   it("rate limits repeated submissions from one connection", async () => {

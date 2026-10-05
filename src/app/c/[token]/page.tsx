@@ -45,7 +45,7 @@ function Notice({ tone, children }: { tone: "info" | "warn" | "ok"; children: Re
 export default async function CustomerPage(props: PageProps<"/c/[token]">) {
   const { token } = await props.params;
   const sp = await props.searchParams;
-  const found = customerByToken(token);
+  const found = await customerByToken(token);
 
   if (!found || found.inquiry.status === "declined") {
     return (
@@ -122,7 +122,7 @@ export default async function CustomerPage(props: PageProps<"/c/[token]">) {
 
   // Approved, not yet paid.
   const provider = paymentProvider();
-  const checkout = latestCheckout(inquiry.id);
+  const checkout = await latestCheckout(inquiry.id);
   const waiting =
     checkout?.status === "processing" || (Boolean(sp.returned) && (checkout?.status === "open" || checkout?.status === "completed"));
 

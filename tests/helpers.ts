@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { resetDbForTests, db } from "@/lib/db";
+import { resetDbForTests } from "@/lib/db";
 import { issueFormToken } from "@/lib/guard";
 
 const BASE_ENV = {
@@ -28,7 +28,6 @@ export function setEnv(overrides: Partial<Record<keyof typeof BASE_ENV, string>>
 
 export function freshDb() {
   resetDbForTests();
-  return db();
 }
 
 /** A form token old enough to pass the "too fast" check. */

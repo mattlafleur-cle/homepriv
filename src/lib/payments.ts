@@ -66,29 +66,27 @@ export function stripe() {
 export class CheckoutUnavailable extends Error {}
 
 /** Resolve a customer link token to its inquiry and (if paid) order. */
-export function customerByToken(token: string): { inquiry: InquiryRow; order?: OrderRow } | undefined {
-  const inquiry = inquiryByToken(token);
+export async function customerByToken(token: string): Promise<{ inquiry: InquiryRow; order?: OrderRow } | undefined> {
+  const inquiry = await inquiryByToken(token);
   if (inquiry) {
-    const order = db().prepare("SELECT * FROM orders WHERE inquiry_id = ?").get(inquiry.id) as OrderRow | undefined;
+    const order = await db.get("SELECT * FROM orders WHERE inquiry_id = ?", inquiry.id) as OrderRow | undefined;
     return { inquiry, order };
   }
-  const order = db().prepare("SELECT * FROM orders WHERE access_token_hash = ?").get(hashToken(token)) as
+  const order = await db.get("SELECT * FROM orders WHERE access_token_hash = ?", hashToken(token)) as
     | OrderRow
     | undefined;
   if (!order) return undefined;
-  const inq = db().prepare("SELECT * FROM inquiries WHERE id = ?").get(order.inquiry_id) as InquiryRow;
+  const inq = await db.get("SELECT * FROM inquiries WHERE id = ?", order.inquiry_id) as InquiryRow;
   return { inquiry: inq, order };
 }
 
-export function latestCheckout(inquiryId: string) {
-  return db()
-    .prepare("SELECT * FROM checkouts WHERE inquiry_id = ? ORDER BY created_at DESC LIMIT 1")
-    .get(inquiryId) as CheckoutRow | undefined;
+export async function latestCheckout(inquiryId: string) {
+  return await db.get("SELECT * FROM checkouts WHERE inquiry_id = ? ORDER BY created_at DESC LIMIT 1", inquiryId) as CheckoutRow | undefined;
 }
 
 /** Create (or reuse) a checkout for an approved inquiry and return where to send the customer. */
 export async function startCheckout(token: string): Promise<{ redirectTo: string }> {
-  const found = customerByToken(token);
+  const found = await customerByToken(token);
   if (!found) throw new CheckoutUnavailable("not_found");
   const { inquiry, order } = found;
   if (order || inquiry.status === "paid") return { redirectTo: `/c/${token}` };
@@ -98,7 +96,7 @@ export async function startCheckout(token: string): Promise<{ redirectTo: string
   if (provider === "none") throw new CheckoutUnavailable("ordering_closed");
 
   // Reuse a recent open session instead of creating duplicates on double-clicks.
-  const existing = latestCheckout(inquiry.id);
+  const existing = await latestCheckout(inquiry.id);
   const fresh = existing && Date.now() - Date.parse(existing.created_at) < 20 * 60 * 60 * 1000;
   if (existing && fresh && existing.status === "open" && existing.provider === provider && existing.url) {
     return { redirectTo: existing.url };
@@ -144,19 +142,13 @@ export async function startCheckout(token: string): Promise<{ redirectTo: string
     url = `/c/${token}/test-payment`;
   }
 
-  db()
-    .prepare(
-      "INSERT INTO checkouts(id, inquiry_id, provider, provider_session_id, status, amount_cents, currency, url, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-    )
-    .run(checkoutId, inquiry.id, provider, sessionId, "open", offer.priceCents, offer.currency, url, now, now);
-  track("checkout_started", { subject: checkoutId, isTest: Boolean(inquiry.is_test) });
+  await db.run("INSERT INTO checkouts(id, inquiry_id, provider, provider_session_id, status, amount_cents, currency, url, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)", checkoutId, inquiry.id, provider, sessionId, "open", offer.priceCents, offer.currency, url, now, now);
+  await track("checkout_started", { subject: checkoutId, isTest: Boolean(inquiry.is_test) });
   return { redirectTo: url };
 }
 
-function setCheckoutStatus(sessionId: string, status: CheckoutRow["status"]) {
-  db()
-    .prepare("UPDATE checkouts SET status=?, updated_at=? WHERE provider_session_id=? AND status IN ('open','processing')")
-    .run(status, nowIso(), sessionId);
+async function setCheckoutStatus(sessionId: string, status: CheckoutRow["status"]) {
+  await db.run("UPDATE checkouts SET status=?, updated_at=? WHERE provider_session_id=? AND status IN ('open','processing')", status, nowIso(), sessionId);
 }
 
 /**
@@ -169,7 +161,7 @@ export async function confirmPayment(input: {
   currency: string | null;
   paymentRef?: string | null;
 }): Promise<{ order: OrderRow; created: boolean } | { error: string }> {
-  const checkout = db().prepare("SELECT * FROM checkouts WHERE provider_session_id = ?").get(input.sessionId) as
+  const checkout = await db.get("SELECT * FROM checkouts WHERE provider_session_id = ?", input.sessionId) as
     | CheckoutRow
     | undefined;
   if (!checkout) return { error: "unknown_checkout" };
@@ -179,23 +171,21 @@ export async function confirmPayment(input: {
   }
 
   let orderToken: string | undefined;
-  const result = tx(() => {
-    const existing = db().prepare("SELECT * FROM orders WHERE inquiry_id = ?").get(checkout.inquiry_id) as
+  let result: { order: OrderRow; created: boolean };
+  try {
+    result = await tx(async (q) => {
+    const existing = await q.get("SELECT * FROM orders WHERE inquiry_id = ?", checkout.inquiry_id) as
       | OrderRow
       | undefined;
     if (existing) return { order: existing, created: false };
 
-    const inquiry = db().prepare("SELECT * FROM inquiries WHERE id = ?").get(checkout.inquiry_id) as InquiryRow;
+    const inquiry = await q.get("SELECT * FROM inquiries WHERE id = ?", checkout.inquiry_id) as InquiryRow;
     const now = nowIso();
     const id = newId();
     orderToken = newAccessToken();
-    db()
-      .prepare(
-        `INSERT INTO orders(id, order_number, inquiry_id, checkout_id, provider, provider_payment_ref, access_token_hash,
+    await q.run(`INSERT INTO orders(id, order_number, inquiry_id, checkout_id, provider, provider_payment_ref, access_token_hash,
           amount_cents, currency, is_test, status, paid_at, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      )
-      .run(
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
         id,
         newRefCode("ORD"),
         inquiry.id,
@@ -211,15 +201,23 @@ export async function confirmPayment(input: {
         now,
         now,
       );
-    db().prepare("UPDATE checkouts SET status='completed', updated_at=? WHERE id=?").run(now, checkout.id);
-    db().prepare("UPDATE inquiries SET status='paid', updated_at=? WHERE id=?").run(now, inquiry.id);
-    const order = db().prepare("SELECT * FROM orders WHERE id = ?").get(id) as OrderRow;
+    await q.run("UPDATE checkouts SET status='completed', updated_at=? WHERE id=?", now, checkout.id);
+    await q.run("UPDATE inquiries SET status='paid', updated_at=? WHERE id=?", now, inquiry.id);
+    const order = await q.get("SELECT * FROM orders WHERE id = ?", id) as OrderRow;
     return { order, created: true };
   });
+  } catch (err) {
+    // A concurrent confirmation for the same inquiry won the race: use its order.
+    const existing = await db.get<OrderRow>("SELECT * FROM orders WHERE inquiry_id = ?", checkout.inquiry_id);
+    if (!existing) throw err;
+    orderToken = undefined;
+    result = { order: existing, created: false };
+  }
+
 
   if (result.created && orderToken) {
-    const inquiry = db().prepare("SELECT * FROM inquiries WHERE id = ?").get(result.order.inquiry_id) as InquiryRow;
-    track("purchase_confirmed", { subject: result.order.id, isTest: Boolean(result.order.is_test) });
+    const inquiry = await db.get("SELECT * FROM inquiries WHERE id = ?", result.order.inquiry_id) as InquiryRow;
+    await track("purchase_confirmed", { subject: result.order.id, isTest: Boolean(result.order.is_test) });
     await sendEmail({
       template: "payment_confirmed",
       to: inquiry.email,
@@ -248,7 +246,7 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
   if (!signature) throw new Error("Missing signature");
   const event = stripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
 
-  const seen = db().prepare("SELECT 1 FROM webhook_events WHERE id = ?").get(event.id);
+  const seen = await db.get("SELECT 1 FROM webhook_events WHERE id = ?", event.id);
   if (seen) return { duplicate: true, type: event.type };
 
   if (event.type.startsWith("checkout.session.")) {
@@ -264,39 +262,39 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
             paymentRef,
           });
         } else {
-          setCheckoutStatus(session.id, "processing");
+          await setCheckoutStatus(session.id, "processing");
         }
         break;
       case "checkout.session.async_payment_succeeded":
         await confirmPayment({ sessionId: session.id, amountCents: session.amount_total, currency: session.currency, paymentRef });
         break;
       case "checkout.session.async_payment_failed":
-        setCheckoutStatus(session.id, "failed");
+        await setCheckoutStatus(session.id, "failed");
         break;
       case "checkout.session.expired":
-        setCheckoutStatus(session.id, "expired");
+        await setCheckoutStatus(session.id, "expired");
         break;
     }
   }
 
   // Recorded only after successful processing, so a failure lets Stripe retry.
-  db().prepare("INSERT OR IGNORE INTO webhook_events(id, type, received_at) VALUES(?,?,?)").run(event.id, event.type, nowIso());
+  await db.run("INSERT OR IGNORE INTO webhook_events(id, type, received_at) VALUES(?,?,?)", event.id, event.type, nowIso());
   return { duplicate: false, type: event.type };
 }
 
 /** Preview-only stand-in for Stripe so the whole flow can be tried without keys. */
 export async function completeSimulatedPayment(token: string, outcome: "pay" | "cancel" | "decline") {
   if (paymentProvider() !== "simulated") throw new CheckoutUnavailable("simulation_disabled");
-  const found = customerByToken(token);
+  const found = await customerByToken(token);
   if (!found) throw new CheckoutUnavailable("not_found");
-  const checkout = latestCheckout(found.inquiry.id);
+  const checkout = await latestCheckout(found.inquiry.id);
   if (!checkout || checkout.provider !== "simulated") throw new CheckoutUnavailable("no_checkout");
   if (outcome === "cancel") {
-    setCheckoutStatus(checkout.provider_session_id, "canceled");
+    await setCheckoutStatus(checkout.provider_session_id, "canceled");
     return { status: "canceled" as const };
   }
   if (outcome === "decline") {
-    setCheckoutStatus(checkout.provider_session_id, "failed");
+    await setCheckoutStatus(checkout.provider_session_id, "failed");
     return { status: "failed" as const };
   }
   if (checkout.status !== "open" && checkout.status !== "completed") throw new CheckoutUnavailable("checkout_closed");
@@ -312,9 +310,7 @@ export async function completeSimulatedPayment(token: string, outcome: "pay" | "
 
 /** Record a refund. For Stripe payments, the refund is issued through Stripe first. */
 export async function refundOrder(orderNumberOrId: string, reason: string) {
-  const order = db()
-    .prepare("SELECT * FROM orders WHERE id = ? OR order_number = ?")
-    .get(orderNumberOrId, orderNumberOrId.toUpperCase()) as OrderRow | undefined;
+  const order = await db.get("SELECT * FROM orders WHERE id = ? OR order_number = ?", orderNumberOrId, orderNumberOrId.toUpperCase()) as OrderRow | undefined;
   if (!order) throw new Error("Order not found");
   if (order.status === "refunded") return order;
   if (order.provider === "stripe") {
@@ -325,8 +321,8 @@ export async function refundOrder(orderNumberOrId: string, reason: string) {
     );
   }
   const now = nowIso();
-  db().prepare("UPDATE orders SET status='refunded', refunded_at=?, refund_reason=?, updated_at=? WHERE id=?").run(now, reason, now, order.id);
-  return db().prepare("SELECT * FROM orders WHERE id = ?").get(order.id) as OrderRow;
+  await db.run("UPDATE orders SET status='refunded', refunded_at=?, refund_reason=?, updated_at=? WHERE id=?", now, reason, now, order.id);
+  return await db.get("SELECT * FROM orders WHERE id = ?", order.id) as OrderRow;
 }
 
 export function formatMoney(cents: number) {

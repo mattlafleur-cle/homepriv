@@ -1,13 +1,16 @@
 import "server-only";
-import { DatabaseSync } from "node:sqlite";
+import { createClient, type Client, type InStatement, type InValue, type Transaction } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 
 /**
- * SQLite storage through Node's built-in driver. One file holds inquiries,
- * orders, payment records, the email outbox, and anonymous funnel counts.
- * For production, DATABASE_PATH must point at persistent storage (a mounted
- * volume or disk), not an ephemeral container filesystem.
+ * SQLite storage through libSQL. One database holds inquiries, orders,
+ * payment records, the email outbox, and anonymous funnel counts.
+ *
+ * - Production (Vercel): a hosted Turso database. Set DATABASE_URL to its
+ *   libsql:// address and DATABASE_AUTH_TOKEN to its token.
+ * - Local development and tests: a file (default ./data/hpc.sqlite) or
+ *   ":memory:". DATABASE_PATH still works as a shortcut for a local file.
  */
 
 const SCHEMA = `
@@ -133,42 +136,96 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 );
 `;
 
-type GlobalWithDb = typeof globalThis & { __hpcDb?: DatabaseSync };
+export type Row = Record<string, unknown>;
+type Runner = Pick<Client, "execute"> | Pick<Transaction, "execute">;
+type GlobalWithDb = typeof globalThis & { __hpcDb?: { client: Client; ready: Promise<void> } };
 
-export function dbPath() {
-  return process.env.DATABASE_PATH?.trim() || path.join(process.cwd(), "data", "hpc.sqlite");
+export function dbUrl() {
+  const url = process.env.DATABASE_URL?.trim();
+  if (url) return url;
+  const file = process.env.DATABASE_PATH?.trim() || path.join(process.cwd(), "data", "hpc.sqlite");
+  return file === ":memory:" ? ":memory:" : `file:${file}`;
 }
 
-export function db(): DatabaseSync {
+export const isHostedDb = () => /^(libsql|https|wss?):\/\//.test(dbUrl());
+
+function connection() {
   const g = globalThis as GlobalWithDb;
   if (g.__hpcDb) return g.__hpcDb;
-  const file = dbPath();
-  if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
-  const conn = new DatabaseSync(file);
-  conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-  conn.exec(SCHEMA);
-  g.__hpcDb = conn;
-  return conn;
+  const url = dbUrl();
+  if (url.startsWith("file:")) fs.mkdirSync(path.dirname(url.slice(5)), { recursive: true });
+  const client = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN?.trim() || undefined });
+  const ready = (async () => {
+    if (!isHostedDb()) await client.execute("PRAGMA foreign_keys = ON");
+    await client.executeMultiple(SCHEMA);
+  })();
+  g.__hpcDb = { client, ready };
+  ready.catch(() => {
+    // Let the next request try again instead of caching a failed start.
+    if (g.__hpcDb?.client === client) g.__hpcDb = undefined;
+  });
+  return g.__hpcDb;
+}
+
+async function client() {
+  const c = connection();
+  await c.ready;
+  return c.client;
+}
+
+function toRows(rs: { columns: string[]; rows: ArrayLike<unknown>[] }): Row[] {
+  return rs.rows.map((r) => Object.fromEntries(rs.columns.map((c, i) => [c, r[i]])));
+}
+
+function stmt(sql: string, args: unknown[]): InStatement {
+  return { sql, args: args.map((a) => (a === undefined ? null : a)) as InValue[] };
+}
+
+function makeQueries(getRunner: () => Promise<Runner>) {
+  return {
+    async all<T = Row>(sql: string, ...args: unknown[]): Promise<T[]> {
+      return toRows(await (await getRunner()).execute(stmt(sql, args))) as T[];
+    },
+    async get<T = Row>(sql: string, ...args: unknown[]): Promise<T | undefined> {
+      return toRows(await (await getRunner()).execute(stmt(sql, args)))[0] as T | undefined;
+    },
+    async run(sql: string, ...args: unknown[]): Promise<{ changes: number }> {
+      const rs = await (await getRunner()).execute(stmt(sql, args));
+      return { changes: rs.rowsAffected };
+    },
+  };
+}
+
+export type Queries = ReturnType<typeof makeQueries>;
+
+/** Run queries against the shared connection: `await db.get(...)`, `db.all`, `db.run`. */
+export const db: Queries & { exec(sql: string): Promise<void> } = {
+  ...makeQueries(client),
+  async exec(sql: string) {
+    await (await client()).executeMultiple(sql);
+  },
+};
+
+/** Run several statements atomically. Throwing inside rolls everything back. */
+export async function tx<T>(fn: (q: Queries) => Promise<T>): Promise<T> {
+  const t = await (await client()).transaction("write");
+  try {
+    const result = await fn(makeQueries(async () => t));
+    await t.commit();
+    return result;
+  } catch (err) {
+    await t.rollback().catch(() => {});
+    throw err;
+  } finally {
+    t.close();
+  }
 }
 
 /** Test helper: drop the cached connection so the next call opens a fresh database. */
 export function resetDbForTests() {
   const g = globalThis as GlobalWithDb;
-  g.__hpcDb?.close();
+  g.__hpcDb?.client.close();
   g.__hpcDb = undefined;
-}
-
-export function tx<T>(fn: () => T): T {
-  const conn = db();
-  conn.exec("BEGIN IMMEDIATE");
-  try {
-    const result = fn();
-    conn.exec("COMMIT");
-    return result;
-  } catch (err) {
-    conn.exec("ROLLBACK");
-    throw err;
-  }
 }
 
 export const nowIso = () => new Date().toISOString();

@@ -2,7 +2,7 @@
 
 ## What is stored, and where
 
-Everything lives in one SQLite file (`DATABASE_PATH`). Nothing personal is kept in browser storage, URLs, analytics, or application logs.
+Everything lives in one SQLite-compatible database: a hosted Turso database in production (`DATABASE_URL`), a local file (`DATABASE_PATH`) in development. Nothing personal is kept in browser storage, URLs, analytics, or application logs.
 
 | Table | Contents | Personal data |
 | --- | --- | --- |

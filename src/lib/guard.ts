@@ -28,24 +28,19 @@ function ipKey(scope: string, ip: string) {
 }
 
 /** Fixed-window counter. Returns true when the request is allowed. */
-export function rateLimit(scope: string, ip: string, limit: number, windowSeconds: number) {
+export async function rateLimit(scope: string, ip: string, limit: number, windowSeconds: number) {
   const key = ipKey(scope, ip);
   const now = Math.floor(Date.now() / 1000);
   const windowStart = now - (now % windowSeconds);
-  const conn = db();
-  const row = conn.prepare("SELECT window_start, count FROM rate_limits WHERE key = ?").get(key) as
+  const row = await db.get("SELECT window_start, count FROM rate_limits WHERE key = ?", key) as
     | { window_start: number; count: number }
     | undefined;
   if (!row || row.window_start !== windowStart) {
-    conn
-      .prepare(
-        "INSERT INTO rate_limits(key, window_start, count) VALUES(?, ?, 1) ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = 1",
-      )
-      .run(key, windowStart);
+    await db.run("INSERT INTO rate_limits(key, window_start, count) VALUES(?, ?, 1) ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = 1", key, windowStart);
     return true;
   }
   if (row.count >= limit) return false;
-  conn.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").run(key);
+  await db.run("UPDATE rate_limits SET count = count + 1 WHERE key = ?", key);
   return true;
 }
 

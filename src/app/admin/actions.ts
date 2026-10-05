@@ -17,7 +17,7 @@ async function requireAdmin() {
 export async function loginAction(_prev: { error?: string } | undefined, form: FormData) {
   if (!adminEnabled()) return { error: "Admin access is not configured. Set ADMIN_PASSWORD and SESSION_SECRET." };
   const ip = clientIp(await headers());
-  if (!rateLimit("admin-login", ip, 8, 900)) return { error: "Too many attempts. Wait 15 minutes and try again." };
+  if (!(await rateLimit("admin-login", ip, 8, 900))) return { error: "Too many attempts. Wait 15 minutes and try again." };
   const pw = String(form.get("password") ?? "");
   if (!checkPassword(pw)) return { error: "That password isn't right." };
   await startAdminSession();
@@ -72,7 +72,7 @@ export async function deleteAction(_prev: ActionResult | undefined, form: FormDa
   await requireAdmin();
   if (form.get("confirm") !== "DELETE") return { error: 'Type DELETE to confirm' };
   try {
-    deleteInquiry(String(form.get("id")));
+    await deleteInquiry(String(form.get("id")));
     revalidatePath("/admin");
     return { ok: "Deleted." };
   } catch (e) {

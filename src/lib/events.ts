@@ -23,24 +23,16 @@ export const CTA_LOCATIONS = ["header", "hero", "pricing", "final", "sticky", "f
 
 export type FunnelEvent = (typeof CLIENT_EVENTS)[number] | (typeof SERVER_EVENTS)[number];
 
-export function track(
+export async function track(
   name: FunnelEvent,
   opts: { location?: string; subject?: string; isTest?: boolean } = {},
 ) {
   const mode = effectiveMode();
-  db()
-    .prepare(
-      "INSERT OR IGNORE INTO funnel_events(name, location, mode, is_test, subject, created_at) VALUES(?, ?, ?, ?, ?, ?)",
-    )
-    .run(name, opts.location ?? null, mode, opts.isTest || mode === "preview" ? 1 : 0, opts.subject ?? null, nowIso());
+  await db.run("INSERT OR IGNORE INTO funnel_events(name, location, mode, is_test, subject, created_at) VALUES(?, ?, ?, ?, ?, ?)", name, opts.location ?? null, mode, opts.isTest || mode === "preview" ? 1 : 0, opts.subject ?? null, nowIso());
 }
 
-export function funnelSummary(includeTest = false) {
-  const rows = db()
-    .prepare(
-      `SELECT name, COUNT(*) AS n FROM funnel_events ${includeTest ? "" : "WHERE is_test = 0"} GROUP BY name`,
-    )
-    .all() as { name: string; n: number }[];
+export async function funnelSummary(includeTest = false) {
+  const rows = await db.all(`SELECT name, COUNT(*) AS n FROM funnel_events ${includeTest ? "" : "WHERE is_test = 0"} GROUP BY name`) as { name: string; n: number }[];
   const counts = Object.fromEntries(rows.map((r) => [r.name, Number(r.n)])) as Record<string, number>;
   const submitted = counts.eligibility_submitted ?? 0;
   const approved = counts.eligibility_approved ?? 0;

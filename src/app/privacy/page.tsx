@@ -60,7 +60,8 @@ export default function PrivacyPage() {
       <ul>
         <li>Stripe processes payments.</li>
         <li>{v.email ? `${v.email} delivers our transactional email.` : "An email delivery provider sends our transactional email. We'll name it here before launch."}</li>
-        <li>{v.hosting ? `${v.hosting} hosts this website and its database.` : "A hosting provider runs this website and its database. We'll name it here before launch."}</li>
+        <li>{v.hosting ? `${v.hosting} hosts this website${v.database ? "" : " and its database"}.` : "A hosting provider runs this website. We'll name it here before launch."}</li>
+        {v.database && <li>{v.database} stores the website&apos;s database.</li>}
       </ul>
 
       <h2>How long we keep it</h2>

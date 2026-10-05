@@ -96,11 +96,7 @@ export async function sendEmail(msg: EmailMessage) {
   const canSend = mode !== "preview" && Boolean(cfg.resendApiKey && cfg.from);
   const status = mode === "preview" ? "held_preview" : canSend ? "queued" : "not_configured";
 
-  db()
-    .prepare(
-      "INSERT INTO email_outbox(id, template, to_address, subject, html, text, status, provider, related_id, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-    )
-    .run(id, msg.template, msg.to, msg.subject, html, text, status, canSend ? "resend" : "outbox", msg.relatedId ?? null, nowIso());
+  await db.run("INSERT INTO email_outbox(id, template, to_address, subject, html, text, status, provider, related_id, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", id, msg.template, msg.to, msg.subject, html, text, status, canSend ? "resend" : "outbox", msg.relatedId ?? null, nowIso());
 
   if (!canSend) return { id, status };
 
@@ -118,11 +114,11 @@ export async function sendEmail(msg: EmailMessage) {
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    db().prepare("UPDATE email_outbox SET status='sent', sent_at=? WHERE id=?").run(nowIso(), id);
+    await db.run("UPDATE email_outbox SET status='sent', sent_at=? WHERE id=?", nowIso(), id);
     return { id, status: "sent" };
   } catch (err) {
     const reason = err instanceof Error ? err.message : "unknown";
-    db().prepare("UPDATE email_outbox SET status='failed', error=? WHERE id=?").run(reason, id);
+    await db.run("UPDATE email_outbox SET status='failed', error=? WHERE id=?", reason, id);
     console.error(`[email] ${msg.template} ${id} failed: ${reason}`);
     return { id, status: "failed" };
   }

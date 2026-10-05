@@ -71,9 +71,14 @@ Sales mode only takes effect when every item in [docs/LAUNCH_CHECKLIST.md](docs/
 2. Put the secret key and the endpoint's signing secret in `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
 3. To rehearse locally with Stripe test mode: `stripe listen --forward-to localhost:3000/api/stripe/webhook` and use the `whsec_` it prints.
 
-## Hosting notes
+## Hosting (Vercel + Turso)
 
-The database is a single SQLite file, so the app needs a host with a persistent disk (for example a small VPS, or a container platform with a mounted volume). Serverless platforms with ephemeral filesystems are not suitable without moving storage to a hosted database. Run `npm run ops -- purge` daily (cron) to apply the retention periods. Back up the database file.
+The site runs on Vercel with its data in a hosted Turso database (SQLite-compatible, free tier). Locally and in tests it uses a SQLite file or memory, so no account is needed to develop.
+
+1. Turso: create a database and an auth token. Put them in `DATABASE_URL` (`libsql://...`) and `DATABASE_AUTH_TOKEN`. Tables are created automatically on first request.
+2. Vercel: import the GitHub repository, set the environment variables from `.env.example`, and deploy.
+3. Domain: add the domain in Vercel, then create the DNS records Vercel shows at your registrar.
+4. Retention: run `npm run ops -- purge` regularly from your own machine with the production `DATABASE_URL` and `DATABASE_AUTH_TOKEN` in `.env.local`.
 
 ## More documentation
 

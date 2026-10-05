@@ -42,18 +42,13 @@ function InquiryCard({ i, actions }: { i: InquiryRow; actions?: React.ReactNode 
 
 export default async function AdminPage() {
   if (!(await isAdmin())) redirect("/admin/login");
-  const conn = db();
-  const pending = conn.prepare("SELECT * FROM inquiries WHERE status='pending_review' ORDER BY created_at").all() as InquiryRow[];
-  const approved = conn.prepare("SELECT * FROM inquiries WHERE status='approved' ORDER BY updated_at DESC LIMIT 50").all() as InquiryRow[];
-  const closed = conn
-    .prepare("SELECT * FROM inquiries WHERE status IN ('declined','listed_not_eligible') ORDER BY updated_at DESC LIMIT 30")
-    .all() as InquiryRow[];
-  const orders = conn
-    .prepare("SELECT o.*, i.name, i.email, i.street, i.unit, i.city, i.state, i.zip FROM orders o JOIN inquiries i ON i.id=o.inquiry_id ORDER BY o.paid_at DESC LIMIT 100")
-    .all() as (OrderRow & Omit<InquiryRow, "status" | "id" | "is_test" | "created_at" | "updated_at">)[];
-  const agents = conn.prepare("SELECT * FROM agent_inquiries ORDER BY created_at DESC LIMIT 30").all() as Agent[];
-  const outbox = conn.prepare("SELECT * FROM email_outbox ORDER BY created_at DESC LIMIT 25").all() as Outbox[];
-  const funnel = funnelSummary(effectiveMode() === "preview");
+  const pending = await db.all("SELECT * FROM inquiries WHERE status='pending_review' ORDER BY created_at") as InquiryRow[];
+  const approved = await db.all("SELECT * FROM inquiries WHERE status='approved' ORDER BY updated_at DESC LIMIT 50") as InquiryRow[];
+  const closed = await db.all("SELECT * FROM inquiries WHERE status IN ('declined','listed_not_eligible') ORDER BY updated_at DESC LIMIT 30") as InquiryRow[];
+  const orders = await db.all("SELECT o.*, i.name, i.email, i.street, i.unit, i.city, i.state, i.zip FROM orders o JOIN inquiries i ON i.id=o.inquiry_id ORDER BY o.paid_at DESC LIMIT 100") as (OrderRow & Omit<InquiryRow, "status" | "id" | "is_test" | "created_at" | "updated_at">)[];
+  const agents = await db.all("SELECT * FROM agent_inquiries ORDER BY created_at DESC LIMIT 30") as Agent[];
+  const outbox = await db.all("SELECT * FROM email_outbox ORDER BY created_at DESC LIMIT 25") as Outbox[];
+  const funnel = await funnelSummary(effectiveMode() === "preview");
   const readiness = salesReadiness();
 
   return (

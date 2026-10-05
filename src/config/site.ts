@@ -38,6 +38,7 @@ export function contact() {
 export function vendors() {
   return {
     hosting: str("HOSTING_PROVIDER_NAME"),
+    database: /turso\.io/.test(str("DATABASE_URL") ?? "") ? "Turso" : undefined,
     email: str("RESEND_API_KEY") ? "Resend" : undefined,
     payments: "Stripe",
   };
@@ -92,8 +93,10 @@ export function salesReadiness(): ReadinessItem[] {
     },
     {
       key: "storage",
-      label: "Database on persistent storage (DATABASE_PATH set and DATABASE_DURABLE=true)",
-      ok: Boolean(str("DATABASE_PATH")) && str("DATABASE_DURABLE") === "true",
+      label: "Durable database (a hosted Turso DATABASE_URL, or a local DATABASE_PATH on a persistent disk with DATABASE_DURABLE=true)",
+      ok: /^(libsql|https|wss?):\/\//.test(str("DATABASE_URL") ?? "")
+        ? Boolean(str("DATABASE_AUTH_TOKEN"))
+        : Boolean(str("DATABASE_PATH")) && str("DATABASE_DURABLE") === "true",
     },
     {
       key: "email",

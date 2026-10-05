@@ -72,7 +72,7 @@ describe("protected approval", () => {
     await expect(declineAction(undefined, formData({ id: ref, reason: "other" }))).rejects.toThrow("REDIRECT:/admin/login");
     cookieJar.set(ADMIN_COOKIE, "9999999999999.forged");
     await expect(approveAction(undefined, formData({ id: ref }))).rejects.toThrow("REDIRECT:/admin/login");
-    expect(findInquiry(ref)?.status).toBe("pending_review");
+    expect((await findInquiry(ref))?.status).toBe("pending_review");
   });
 
   it("approves with a valid session and returns a one-time customer link", async () => {
@@ -81,13 +81,13 @@ describe("protected approval", () => {
     const r = await approveAction(undefined, formData({ id: ref }));
     expect(r.ok).toContain(ref);
     expect(r.link).toMatch(/^http:\/\/localhost:3000\/c\/[A-Za-z0-9_-]{43}$/);
-    const row = findInquiry(ref)!;
+    const row = (await findInquiry(ref))!;
     expect(row.status).toBe("approved");
     expect(row.decided_by).toBe("Test Operator");
     // Only the hash is stored.
     const token = r.link!.split("/c/")[1];
     const { db } = await import("@/lib/db");
-    const dump = JSON.stringify(db().prepare("SELECT * FROM inquiries").all());
+    const dump = JSON.stringify((await db.all("SELECT * FROM inquiries")));
     expect(dump).not.toContain(token);
   });
 
@@ -97,10 +97,10 @@ describe("protected approval", () => {
     await approveAction(undefined, formData({ id: ref }));
     const r = await declineAction(undefined, formData({ id: ref, reason: "no_exposure", note: "internal only" }));
     expect(r.ok).toContain("Declined");
-    const row = findInquiry(ref)!;
+    const row = (await findInquiry(ref))!;
     expect(row.status).toBe("declined");
     const { db } = await import("@/lib/db");
-    const mail = db().prepare("SELECT text FROM email_outbox WHERE template='declined'").get() as { text: string };
+    const mail = (await db.get("SELECT text FROM email_outbox WHERE template='declined'")) as { text: string };
     expect(mail.text).not.toContain("internal only");
     expect(row.decision_note).toContain("internal only");
   });

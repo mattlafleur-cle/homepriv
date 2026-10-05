@@ -19,7 +19,7 @@ export function formatDate(iso: string | null | undefined) {
  * clock (45-day window and day-60 recheck) starts here, not at payment.
  */
 export async function completeOnboarding(token: string, data: z.output<typeof onboardingSchema>) {
-  const found = customerByToken(token);
+  const found = await customerByToken(token);
   if (!found?.order) return { error: "not_found" as const };
   const { order, inquiry } = found;
   if (order.status !== "awaiting_intake") return { error: "already_complete" as const };
@@ -29,13 +29,9 @@ export async function completeOnboarding(token: string, data: z.output<typeof on
   const recheck = new Date(now.getTime() + offer.recheckDay * DAY).toISOString();
   const nowS = now.toISOString();
 
-  db()
-    .prepare(
-      `UPDATE orders SET authorization_name=?, authorization_at=?, listing_agent=?, owner_notes=?,
+  await db.run(`UPDATE orders SET authorization_name=?, authorization_at=?, listing_agent=?, owner_notes=?,
         street_view_consent=?, street_view_consent_at=?, intake_completed_at=?, service_ends_at=?, recheck_at=?,
-        status='in_service', updated_at=? WHERE id=? AND status='awaiting_intake'`,
-    )
-    .run(
+        status='in_service', updated_at=? WHERE id=? AND status='awaiting_intake'`, 
       data.authorizationName,
       nowS,
       data.listingAgent ?? null,

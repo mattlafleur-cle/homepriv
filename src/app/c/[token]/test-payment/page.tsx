@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Test payment", robots: { index: fals
 export default async function TestPaymentPage(props: PageProps<"/c/[token]/test-payment">) {
   const { token } = await props.params;
   if (paymentProvider() !== "simulated") notFound();
-  const found = customerByToken(token);
-  const checkout = found && latestCheckout(found.inquiry.id);
+  const found = await customerByToken(token);
+  const checkout = found && await latestCheckout(found.inquiry.id);
   if (!found || !checkout || checkout.provider !== "simulated") notFound();
 
   const action = `/c/${token}/test-payment/complete`;

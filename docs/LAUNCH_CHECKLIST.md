@@ -7,7 +7,7 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 | # | Requirement | How it is checked | Status |
 | --- | --- | --- | --- |
 | 1 | Payments configured | `STRIPE_SECRET_KEY` (an `sk_live_` key in production) and `STRIPE_WEBHOOK_SECRET` set | Open |
-| 2 | Durable storage | `DATABASE_PATH` on a persistent disk or volume, and `DATABASE_DURABLE=true` set by the person who verified it | Open |
+| 2 | Durable storage | A hosted Turso `DATABASE_URL` with `DATABASE_AUTH_TOKEN` (or, self-hosted, `DATABASE_PATH` on a persistent disk with `DATABASE_DURABLE=true`) | Open |
 | 3 | Transactional email | `RESEND_API_KEY` and a verified `EMAIL_FROM` sender | Open |
 | 4 | Identified operator | `OPERATOR_NAME`, `ADMIN_PASSWORD` (12+ characters), `SESSION_SECRET` (32+ characters) | Open |
 | 5 | Confirmed offer terms | `offerTermsConfirmedOn` and `legalPagesConfirmedOn` dates filled in `src/config/offer.ts` (also fill `confirmedBy`) | Open |
@@ -31,7 +31,7 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 
 - [ ] Stripe webhook endpoint created with the four `checkout.session.*` events, and a live test purchase refunded end to end.
 - [ ] Email sender domain verified (SPF/DKIM) and a test message received in Gmail and Outlook.
-- [ ] Database backups scheduled and one restore tested.
+- [ ] Database backups confirmed (Turso keeps point-in-time history; confirm what your plan includes) and one restore tested.
 - [ ] Daily `npm run ops -- purge` scheduled.
 - [ ] Review turnaround you can actually keep, decided before you promise any response time anywhere.
 - [ ] Templates ready for weekly updates, the final report, and the day-60 recheck. (The site records dates; report delivery is handled by the operator.)
