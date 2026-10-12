@@ -1,6 +1,6 @@
 # Home Privacy Cleanup
 
-Public website and purchase flow for Home Privacy Cleanup: a $499, one-time managed service that finds old listing photos, floor plans, and virtual tours of an off-market home, requests removal or public suppression, follows up for 45 days, and verifies the results.
+Public website and purchase flow for Home Privacy Cleanup: a $349 (launch price), one-time managed service that finds old listing photos, floor plans, and virtual tours of an off-market home, requests removal or public suppression, follows up for 45 days, and verifies the results.
 
 Built with Next.js 16 (App Router, TypeScript), Tailwind CSS 4, SQLite through Node's built-in `node:sqlite`, Stripe Checkout, and Resend for email.
 

@@ -44,7 +44,7 @@ describe("preview simulated checkout", () => {
     expect(await count("SELECT COUNT(*) n FROM email_outbox WHERE template='payment_confirmed'")).toBe(1);
 
     const order = (await customerByToken(token))!.order!;
-    expect(order.amount_cents).toBe(49900);
+    expect(order.amount_cents).toBe(34900);
     expect(order.status).toBe("awaiting_intake");
     expect(order.service_ends_at).toBeNull(); // clock starts at completed intake, not payment
     // A paid customer going back to checkout is sent to their order page.
@@ -105,7 +105,7 @@ describe("Stripe checkout and webhooks", () => {
   }
 
   function sessionEvent(id: string, type: string, session: Record<string, unknown>) {
-    return { id, object: "event", type, data: { object: { object: "checkout.session", amount_total: 49900, currency: "usd", payment_status: "paid", payment_intent: "pi_123", ...session } } };
+    return { id, object: "event", type, data: { object: { object: "checkout.session", amount_total: 34900, currency: "usd", payment_status: "paid", payment_intent: "pi_123", ...session } } };
   }
 
   it("prices on the server, reuses an open session, and treats the redirect as unconfirmed", async () => {
@@ -117,7 +117,7 @@ describe("Stripe checkout and webhooks", () => {
     expect(b.redirectTo).toBe(a.redirectTo);
     expect(create).toHaveBeenCalledTimes(1);
     const params = create.mock.calls[0][0] as Stripe.Checkout.SessionCreateParams;
-    expect(params.line_items?.[0].price_data?.unit_amount).toBe(49900);
+    expect(params.line_items?.[0].price_data?.unit_amount).toBe(34900);
     expect(params.success_url).toContain(`/c/${token}?returned=1`);
     expect(await count("SELECT COUNT(*) n FROM orders")).toBe(0);
   });

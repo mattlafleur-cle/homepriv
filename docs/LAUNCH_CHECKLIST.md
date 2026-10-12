@@ -19,12 +19,12 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 - [ ] **Legal entity** that sells the service, and whether it is a new entity or an existing one. Goes in `BUSINESS_LEGAL_NAME` and the terms.
 - [ ] **Domain** and **contact email**. A mailing address and phone are optional; publish only real ones.
 - [ ] **Final assurance wording.** The proposed text is in `offer.assurance`. Confirm the two refund triggers (full refund before the first external request; service-fee refund if no identified target is verified removed or suppressed by day 45), that partial success does not qualify, and that Street View alone does not count.
-- [ ] **Final price and scope** ($499, one residence, covered sites, up to 5 additional sites, 45-day window, weekly updates, final report, day-60 recheck).
+- [ ] **Final price and scope** ($349 launch price, one residence, covered sites, up to 5 additional sites, 45-day window, weekly updates, final report, day-60 recheck).
 - [ ] **Legal review** of `/terms`, `/privacy`, and `/refunds`. Two placeholders remain in the terms: liability wording and governing law.
 - [ ] **Order record retention period** (privacy page currently says it will be stated before launch).
 - [ ] **Hosting provider** name for the privacy page (`HOSTING_PROVIDER_NAME`).
 - [ ] **Service area** wording. The site says it is starting with Northeast Ohio and does not claim wider coverage. Decide how to handle out-of-area requests (the decline reason `out_of_area` exists).
-- [ ] **Sales tax.** Confirm whether this service is taxable where you sell it. Checkout currently charges a flat $499 with no tax line. If tax applies, enable Stripe Tax or adjust pricing before launch.
+- [ ] **Sales tax.** Confirm whether this service is taxable where you sell it. Checkout currently charges a flat $349 with no tax line. If tax applies, enable Stripe Tax or adjust pricing before launch.
 - [ ] Whether the business plan's **five free beta homes** run in preview mode (records marked test) or through manual handling outside the site.
 
 ## Operational readiness

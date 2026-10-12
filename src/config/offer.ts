@@ -14,9 +14,11 @@
 export const offer = {
   brandName: "Home Privacy Cleanup",
   productName: "Home Privacy Cleanup, one residence",
-  priceCents: 49_900,
+  priceCents: 34_900,
   currency: "usd",
-  priceLabel: "$499",
+  priceLabel: "$349",
+  /** Shown beside the price. Set to null when the launch price ends. */
+  priceNote: "Launch price" as string | null,
 
   /** Initial marketing focus. Do not describe wider coverage as established. */
   serviceArea: "Northeast Ohio",

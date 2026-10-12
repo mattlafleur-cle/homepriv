@@ -4,7 +4,7 @@ import { coveredSitesSentence, offer } from "@/config/offer";
 
 export const metadata: Metadata = {
   title: "What's covered",
-  description: "Exactly what the $499 Home Privacy Cleanup service includes, what it doesn't, and how results are verified.",
+  description: `Exactly what the ${offer.priceLabel} Home Privacy Cleanup service includes, what it doesn't, and how results are verified.`,
   alternates: { canonical: "/scope" },
 };
 

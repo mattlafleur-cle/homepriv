@@ -229,7 +229,12 @@ export default function Home() {
                       <span className="text-muted">once</span>
                     </p>
                   </div>
-                  <p className="rounded-full bg-sage px-3 py-1 text-[0.875rem] font-semibold text-evergreen">No subscription</p>
+                  <div className="flex flex-wrap gap-2">
+                    {offer.priceNote && (
+                      <p className="rounded-full bg-evergreen px-3 py-1 text-[0.875rem] font-semibold text-paper">{offer.priceNote}</p>
+                    )}
+                    <p className="rounded-full bg-sage px-3 py-1 text-[0.875rem] font-semibold text-evergreen">No subscription</p>
+                  </div>
                 </div>
                 <p className="mt-4 text-muted">For one home that isn&apos;t listed for sale or rent. We confirm eligibility before you pay.</p>
 

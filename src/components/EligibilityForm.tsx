@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Checkbox, ErrorSummary, Honeypot, postJson, RadioGroup, TextField, type Errors } from "./form-parts";
 import { sendEvent } from "./CtaLink";
 import { US_STATES } from "@/lib/states";
+import { offer } from "@/config/offer";
 
 type Mode = "preview" | "interest" | "sales";
 
@@ -150,7 +151,7 @@ export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: {
                 <li>We email you what we find. Paid ordering isn&apos;t open yet, and we&apos;ll let you know when it is.</li>
               ) : (
                 <>
-                  <li>If your home qualifies, we email you a secure link to pay $499. If it doesn&apos;t, we tell you why.</li>
+                  <li>If your home qualifies, we email you a secure link to pay {offer.priceLabel}. If it doesn&apos;t, we tell you why.</li>
                   <li>After payment, a short onboarding form collects your written authorization, and the work begins.</li>
                 </>
               )}

@@ -11,7 +11,7 @@ This is the sales-mode copy as implemented in `src/app/page.tsx` and `src/conten
 **Supporting copy:** Old listing photos can leave the inside of your home on public display. We find exposed photos, request removal, manage follow-ups, and check the results, so you don't have to manage the process yourself.
 
 **Primary button:** Start my home cleanup
-**Under the button:** $499 once. One home. Eligibility checked before payment.
+**Under the button:** $349 once (launch price). One home. Eligibility checked before payment.
 **Secondary button:** See what's included
 
 Beside the hero: an illustrated listing page ("Sample home, sold last year / Off market, photos still public") and a cleanup report card, both labeled "Illustrative example".
@@ -30,7 +30,7 @@ Not every home is affected. The way to know is to look, carefully, in all the pl
 
 **You can do some of this yourself. We take on the whole process.**
 
-Some websites let a verified owner hide photos or request removal, and you're welcome to use them. The work is everything around those tools: finding every copy, learning each site's route, reaching the original listing source, following up when nothing changes, and checking whether the photos are really gone. Your $499 pays for us to manage that covered process from start to finish.
+Some websites let a verified owner hide photos or request removal, and you're welcome to use them. The work is everything around those tools: finding every copy, learning each site's route, reaching the original listing source, following up when nothing changes, and checking whether the photos are really gone. Your $349 pays for us to manage that covered process from start to finish.
 
 | The job | On your own | With Home Privacy Cleanup |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ Some websites let a verified owner hide photos or request removal, and you're we
 
 **One home. One price. Paid once.**
 
-**$499 once.** No subscription. For one home that isn't listed for sale or rent. We confirm eligibility before you pay.
+**$349 once.** Launch price. No subscription. For one home that isn't listed for sale or rent. We confirm eligibility before you pay.
 
 What's included:
 - An audit of Zillow, Redfin, Realtor.com, Trulia, Homes.com, and Google Search and Google Images
@@ -112,6 +112,6 @@ Form: name, email, brokerage (optional), how you'd use it (optional), permission
 
 Tell us about your home. We'll check eligibility before anything is charged, then manage the requests, the follow-up, and the proof.
 
-**Start my home cleanup.** $499 once. One home. Eligibility checked before payment.
+**Start my home cleanup.** $349 once (launch price). One home. Eligibility checked before payment.
 
 Footer: short description, "Starting with homes in Northeast Ohio", contact, What's covered, Refund policy, Privacy, Terms, and a non-affiliation statement for the named websites.

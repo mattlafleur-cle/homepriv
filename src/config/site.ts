@@ -171,11 +171,11 @@ export function modeCopy(mode: LaunchMode = effectiveMode()) {
   if (mode === "interest") {
     return {
       primaryCta: "Check if my home qualifies",
-      ctaSupport: `${offer.priceLabel} once, when ordering opens. Paid ordering isn't open yet, so nothing is charged now.`,
+      ctaSupport: `${offer.priceLabel} once${offer.priceNote ? ` (${offer.priceNote.toLowerCase()})` : ""}, when ordering opens. Paid ordering isn't open yet, so nothing is charged now.`,
     };
   }
   return {
     primaryCta: "Start my home cleanup",
-    ctaSupport: `${offer.priceLabel} once. One home. Eligibility checked before payment.`,
+    ctaSupport: `${offer.priceLabel} once${offer.priceNote ? ` (${offer.priceNote.toLowerCase()})` : ""}. One home. Eligibility checked before payment.`,
   };
 }
