@@ -20,7 +20,7 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 - [x] **Domain** (homeprivacycleanup.com) and **contact email** (hello@homeprivacycleanup.com, forwarded). A mailing address and phone are optional; publish only real ones.
 - [x] **Assurance wording** decided: full refund before the first external request; service-fee refund if no identified target is verified removed or suppressed by day 60 (the recheck). Partial success does not qualify; Street View alone does not count.
 - [x] **Final price and scope** ($349 launch price, one residence, covered sites, up to 5 additional sites, 45-day window, weekly updates, final report, day-60 recheck).
-- [x] **Legal review** of `/terms`, `/privacy`, and `/refunds`: reviewed and approved by counsel; confirmed 2026-10-12. Liability is capped at the fee paid and Ohio law governs.
+- [x] **Legal review** of `/terms`, `/privacy`, and `/refunds`: reviewed and approved by counsel; confirmed 2026-10-12, card-hold additions approved 2026-10-13. Liability is capped at the fee paid and Ohio law governs.
 - [x] **Order record retention period:** 7 years (`offer.retention.orderRecordYears`).
 - [x] **Hosting provider** name for the privacy page (`HOSTING_PROVIDER_NAME=Vercel`).
 - [ ] **Service area** wording. The site says it is starting with Northeast Ohio and does not claim wider coverage. Decide how to handle out-of-area requests (the decline reason `out_of_area` exists).

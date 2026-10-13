@@ -63,8 +63,8 @@ export const offer = {
     /** ISO date the price, scope, service window, and refund terms were confirmed. */
     offerTermsConfirmedOn: "2026-10-12" as string | null,
     /** ISO date the privacy policy, terms, and refund policy were reviewed and approved. */
-    legalPagesConfirmedOn: "2026-10-12" as string | null,
-    confirmedBy: "Matt LaFleur, Home Privacy Cleanup LLC (legal pages reviewed and approved by counsel)" as string | null,
+    legalPagesConfirmedOn: "2026-10-13" as string | null,
+    confirmedBy: "Matt LaFleur, Home Privacy Cleanup LLC (legal pages, including the card-hold terms, reviewed and approved by counsel)" as string | null,
   },
 
   /** Proposed retention periods. Shown on the privacy page; enforced by `npm run ops -- purge`. */
