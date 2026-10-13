@@ -83,12 +83,12 @@ export function salesReadiness(): ReadinessItem[] {
     {
       key: "payments",
       label: liveKeyRequired
-        ? "Stripe live secret key and webhook signing secret"
+        ? "Stripe live secret or restricted key and webhook signing secret"
         : "Stripe secret key and webhook signing secret",
       ok: Boolean(
         secretKey &&
           webhookSecret &&
-          (liveKeyRequired ? secretKey.startsWith("sk_live_") : /^sk_(test|live)_/.test(secretKey)),
+          (liveKeyRequired ? /^[sr]k_live_/.test(secretKey) : /^[sr]k_(test|live)_/.test(secretKey)),
       ),
     },
     {
@@ -153,7 +153,7 @@ export function paymentProvider(): PaymentProvider {
   if (mode === "interest") return "none";
   if (mode === "sales") return "stripe";
   // Preview: Stripe only with a test key, otherwise an on-site simulated test payment.
-  if (secretKey?.startsWith("sk_test_") && webhookSecret) return "stripe";
+  if (secretKey && /^[sr]k_test_/.test(secretKey) && webhookSecret) return "stripe";
   return "simulated";
 }
 

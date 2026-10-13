@@ -45,6 +45,8 @@ describe("launch modes", () => {
   it("never uses a live Stripe key in preview", () => {
     setEnv({ STRIPE_SECRET_KEY: "sk_live_abc", STRIPE_WEBHOOK_SECRET: "whsec_abc" });
     expect(paymentProvider()).toBe("simulated");
+    setEnv({ STRIPE_SECRET_KEY: "rk_live_abc", STRIPE_WEBHOOK_SECRET: "whsec_abc" });
+    expect(paymentProvider()).toBe("simulated");
   });
 
   it("interest mode collects inquiries but cannot take payment", async () => {
@@ -90,5 +92,9 @@ describe("launch modes", () => {
     expect(indexable()).toBe(true);
     setEnv({ ...FULL_SALES, STRIPE_SECRET_KEY: "sk_live_abc" });
     expect(indexable()).toBe(false);
+    setEnv({ ...FULL_SALES, STRIPE_SECRET_KEY: "rk_live_abc" });
+    expect(effectiveMode()).toBe("sales");
+    setEnv({ ...FULL_SALES, STRIPE_SECRET_KEY: "rk_test_abc" });
+    expect(effectiveMode()).toBe("interest");
   });
 });

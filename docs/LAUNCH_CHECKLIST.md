@@ -6,7 +6,7 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 
 | # | Requirement | How it is checked | Status |
 | --- | --- | --- | --- |
-| 1 | Payments configured | `STRIPE_SECRET_KEY` (an `sk_live_` key in production) and `STRIPE_WEBHOOK_SECRET` set | Open |
+| 1 | Payments configured | `STRIPE_SECRET_KEY` (an `sk_live_` or restricted `rk_live_` key in production) and `STRIPE_WEBHOOK_SECRET` set | Open |
 | 2 | Durable storage | A hosted Turso `DATABASE_URL` with `DATABASE_AUTH_TOKEN` (or, self-hosted, `DATABASE_PATH` on a persistent disk with `DATABASE_DURABLE=true`) | Open |
 | 3 | Transactional email | `RESEND_API_KEY` and a verified `EMAIL_FROM` sender | Open |
 | 4 | Identified operator | `OPERATOR_NAME`, `ADMIN_PASSWORD` (12+ characters), `SESSION_SECRET` (32+ characters) | Open |
