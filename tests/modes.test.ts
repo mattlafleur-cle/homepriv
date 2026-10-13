@@ -23,14 +23,16 @@ const FULL_SALES = {
 };
 
 const terms = offer.termsConfirmation as { offerTermsConfirmedOn: string | null; legalPagesConfirmedOn: string | null };
+const confirmed = { ...terms };
 
 beforeEach(() => {
   setEnv();
   freshDb();
-});
-afterEach(() => {
   terms.offerTermsConfirmedOn = null;
   terms.legalPagesConfirmedOn = null;
+});
+afterEach(() => {
+  Object.assign(terms, confirmed);
   vi.unstubAllEnvs();
 });
 

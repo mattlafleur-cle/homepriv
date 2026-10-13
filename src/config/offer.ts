@@ -61,10 +61,10 @@ export const offer = {
 
   termsConfirmation: {
     /** ISO date the price, scope, service window, and refund terms were confirmed. */
-    offerTermsConfirmedOn: null as string | null,
+    offerTermsConfirmedOn: "2026-10-12" as string | null,
     /** ISO date the privacy policy, terms, and refund policy were reviewed and approved. */
-    legalPagesConfirmedOn: null as string | null,
-    confirmedBy: null as string | null,
+    legalPagesConfirmedOn: "2026-10-12" as string | null,
+    confirmedBy: "Matt LaFleur, Home Privacy Cleanup LLC (legal pages reviewed and approved by counsel)" as string | null,
   },
 
   /** Proposed retention periods. Shown on the privacy page; enforced by `npm run ops -- purge`. */
