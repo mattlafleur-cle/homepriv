@@ -3,6 +3,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CtaLink } from "@/components/CtaLink";
 import { HeroDemo, IllustrativeTag, StatusPill, type Status } from "@/components/Illustrations";
 import { StickyCta } from "@/components/StickyCta";
+import { StrangerExample } from "@/components/StrangerExample";
 import { AgentForm } from "@/components/AgentForm";
 import { Faq } from "@/components/Faq";
 import { coveredSitesSentence, offer, termsConfirmed } from "@/config/offer";
@@ -125,6 +126,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* 2b. What a stranger can learn */}
+        <StrangerExample />
 
         {/* 3. Why hire us */}
         <section aria-labelledby="why-title">

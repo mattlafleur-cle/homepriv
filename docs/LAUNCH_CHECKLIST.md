@@ -25,6 +25,7 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 - [ ] **Hosting provider** name for the privacy page (`HOSTING_PROVIDER_NAME`).
 - [ ] **Service area** wording. The site says it is starting with Northeast Ohio and does not claim wider coverage. Decide how to handle out-of-area requests (the decline reason `out_of_area` exists).
 - [ ] **Sales tax.** Confirm whether this service is taxable where you sell it. Checkout currently charges a flat $349 with no tax line. If tax applies, enable Stripe Tax or adjust pricing before launch.
+- [ ] **Example listing photos** (`src/assets/example/`). Record where each stock photo came from and its license. The house number and yard sign in the exterior photo are blurred; keep them blurred if the file is replaced.
 - [ ] Whether the business plan's **five free beta homes** run in preview mode (records marked test) or through manual handling outside the site.
 
 ## Operational readiness
