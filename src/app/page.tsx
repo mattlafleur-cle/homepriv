@@ -424,11 +424,11 @@ export default function Home() {
         <section aria-labelledby="final-title" id="final-cta">
           <div className="container-page py-10 text-center md:py-14">
             <h2 id="final-title" className="mx-auto max-w-3xl text-[2.1rem] font-medium sm:text-[2.75rem]">
-              Find out what&apos;s still out there, and let someone else handle it.
+              Restoring peace at home.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-[1.1rem] text-muted">
-              Tell us about your home. We&apos;ll check eligibility before anything is charged, then manage the requests, the
-              follow-up, and the proof.
+              Find out what&apos;s still out there, and let someone else handle it. We&apos;ll check eligibility before anything
+              is charged, then manage the requests, the follow-up, and the proof.
             </p>
             <div className="mt-8 flex justify-center">
               <CtaLink location="final">{primaryCta}</CtaLink>

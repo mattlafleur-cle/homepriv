@@ -108,9 +108,9 @@ Form: name, email, brokerage (optional), how you'd use it (optional), permission
 
 ## 10. Final call to action
 
-**Find out what's still out there, and let someone else handle it.**
+**Restoring peace at home.**
 
-Tell us about your home. We'll check eligibility before anything is charged, then manage the requests, the follow-up, and the proof.
+Find out what's still out there, and let someone else handle it. We'll check eligibility before anything is charged, then manage the requests, the follow-up, and the proof.
 
 **Start my home cleanup.** $349 once (launch price). One home. Eligibility checked before payment.
 
