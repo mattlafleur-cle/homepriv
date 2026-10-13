@@ -9,7 +9,11 @@ export async function POST(_request: Request, ctx: RouteContext<"/c/[token]/chec
     return Response.redirect(target, 303);
   } catch (err) {
     const code = err instanceof CheckoutUnavailable ? err.message : "checkout_failed";
-    if (!(err instanceof CheckoutUnavailable)) console.error(`[checkout] start failed: ${err instanceof Error ? err.name : "unknown"}`);
+    if (!(err instanceof CheckoutUnavailable)) {
+      // Stripe error type, code, and parameter name only. Never the message, which can echo request data.
+      const e = err as { name?: string; type?: string; code?: string; param?: string; statusCode?: number };
+      console.error(`[checkout] start failed: ${e.name ?? "unknown"} type=${e.type ?? "-"} code=${e.code ?? "-"} param=${e.param ?? "-"} status=${e.statusCode ?? "-"}`);
+    }
     return Response.redirect(`${siteUrl()}/c/${encodeURIComponent(token)}?error=${code}`, 303);
   }
 }
