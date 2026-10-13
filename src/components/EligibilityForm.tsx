@@ -282,8 +282,8 @@ export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: {
         <TextField name="notes" label={LABELS.notes} optional multiline rows={3} value={v.notes} onChange={set("notes")} error={errors.notes} maxLength={1000} />
       </fieldset>
 
-      <fieldset className="space-y-4 rounded-xl border border-line bg-paper p-5">
-        <legend className="px-1 font-semibold">Before you send</legend>
+      <fieldset className="space-y-4 rounded-xl border border-line bg-paper px-5 pb-5 pt-2">
+        <legend className="mb-0 px-1 font-semibold">Before you send</legend>
         <p className="text-[0.9375rem] text-muted">
           We use your details only to see if we can help, to follow up with you, and to do the work if you hire us. We never sell
           your information or share it for advertising. <Link className="text-link" href={privacyHref}>Read our privacy notice</Link>.

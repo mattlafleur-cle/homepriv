@@ -55,8 +55,8 @@ export function OnboardingForm({ token, address }: { token: string; address: str
     <form noValidate onSubmit={onSubmit} className="space-y-8">
       <ErrorSummary errors={errors} labels={LABELS} formError={formError} summaryRef={summaryRef} />
 
-      <fieldset className="space-y-4 rounded-xl border border-line bg-paper p-5 sm:p-6">
-        <legend className="px-1 font-display text-[1.35rem] font-medium">Written authorization</legend>
+      <fieldset className="space-y-4 rounded-xl border border-line bg-paper px-5 pb-5 pt-2 sm:px-6 sm:pb-6">
+        <legend className="mb-0 px-1 font-display text-[1.35rem] font-medium">Written authorization</legend>
         <div className="rounded-lg bg-sand/60 p-4 text-[0.975rem] leading-relaxed">
           I authorize Home Privacy Cleanup to act on my behalf to find and request removal or public suppression of listing
           photos, floor plans, and virtual tours of <strong>{address}</strong>. This includes contacting property websites,
@@ -93,8 +93,8 @@ export function OnboardingForm({ token, address }: { token: string; address: str
         <TextField name="ownerNotes" label={LABELS.ownerNotes} optional multiline rows={3} value={v.ownerNotes} onChange={set("ownerNotes")} error={errors.ownerNotes} maxLength={1500} />
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-xl border border-line p-5 sm:p-6">
-        <legend className="px-1 font-display text-[1.35rem] font-medium">Optional: Google Street View blur</legend>
+      <fieldset className="space-y-3 rounded-xl border border-line px-5 pb-5 pt-2 sm:px-6 sm:pb-6">
+        <legend className="mb-0 px-1 font-display text-[1.35rem] font-medium">Optional: Google Street View blur</legend>
         <p className="text-[0.975rem] text-muted">
           Separate from listing photos, Google lets owners ask for their house to be blurred in Street View. If you&apos;d like, we
           guide you through Google&apos;s request. Google requires the owner to take certain steps, including proof of address.
