@@ -16,15 +16,15 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 
 ## Facts to decide or confirm (not invented in the build)
 
-- [ ] **Legal entity** that sells the service, and whether it is a new entity or an existing one. Goes in `BUSINESS_LEGAL_NAME` and the terms.
-- [ ] **Domain** and **contact email**. A mailing address and phone are optional; publish only real ones.
-- [ ] **Final assurance wording.** The proposed text is in `offer.assurance`. Confirm the two refund triggers (full refund before the first external request; service-fee refund if no identified target is verified removed or suppressed by day 45), that partial success does not qualify, and that Street View alone does not count.
-- [ ] **Final price and scope** ($349 launch price, one residence, covered sites, up to 5 additional sites, 45-day window, weekly updates, final report, day-60 recheck).
-- [ ] **Legal review** of `/terms`, `/privacy`, and `/refunds`. Two placeholders remain in the terms: liability wording and governing law.
-- [ ] **Order record retention period** (privacy page currently says it will be stated before launch).
-- [ ] **Hosting provider** name for the privacy page (`HOSTING_PROVIDER_NAME`).
+- [x] **Legal entity:** Home Privacy Cleanup LLC. Set `BUSINESS_LEGAL_NAME` to exactly this once the LLC is registered with the Ohio Secretary of State.
+- [x] **Domain** (homeprivacycleanup.com) and **contact email** (hello@homeprivacycleanup.com, forwarded). A mailing address and phone are optional; publish only real ones.
+- [x] **Assurance wording** decided: full refund before the first external request; service-fee refund if no identified target is verified removed or suppressed by day 60 (the recheck). Partial success does not qualify; Street View alone does not count.
+- [x] **Final price and scope** ($349 launch price, one residence, covered sites, up to 5 additional sites, 45-day window, weekly updates, final report, day-60 recheck).
+- [ ] **Legal review** of `/terms`, `/privacy`, and `/refunds`. Liability is capped at the fee paid and Ohio law governs; no placeholders remain. Attorney review is still recommended before `legalPagesConfirmedOn` is set.
+- [x] **Order record retention period:** 7 years (`offer.retention.orderRecordYears`).
+- [x] **Hosting provider** name for the privacy page (`HOSTING_PROVIDER_NAME=Vercel`).
 - [ ] **Service area** wording. The site says it is starting with Northeast Ohio and does not claim wider coverage. Decide how to handle out-of-area requests (the decline reason `out_of_area` exists).
-- [ ] **Sales tax.** Confirm whether this service is taxable where you sell it. Checkout currently charges a flat $349 with no tax line. If tax applies, enable Stripe Tax or adjust pricing before launch.
+- [x] **Sales tax:** the operator determined Ohio sales tax does not apply to this service. Checkout charges a flat $349 with no tax line. Revisit if the service changes or sales extend to other states.
 - [ ] **Example listing photos** (`src/assets/example/`). Record where each stock photo came from and its license. The house number and yard sign in the exterior photo are blurred; keep them blurred if the file is replaced.
 - [ ] Whether the business plan's **five free beta homes** run in preview mode (records marked test) or through manual handling outside the site.
 

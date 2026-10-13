@@ -70,7 +70,7 @@ export default function PrivacyPage() {
         <li>Approved requests that never become orders: deleted after {offer.retention.unpaidApprovedInquiryDays} days.</li>
         <li>Agent inquiries: deleted after {offer.retention.agentInquiryDays} days.</li>
         <li>Copies of the emails we send you: deleted after 90 days.</li>
-        <li>Orders, authorizations, and the work record: kept as business records for as long as we need them for tax, accounting, and dispute purposes. We&apos;ll state the exact period before launch.</li>
+        <li>Orders, authorizations, and the work record: kept as business records for {offer.retention.orderRecordYears} years after the order, for tax, accounting, and dispute purposes.</li>
       </ul>
 
       <h2>Your choices</h2>

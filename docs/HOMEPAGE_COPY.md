@@ -87,7 +87,7 @@ A sample final report (labeled "Illustrative example", fictional rows) shows des
 
 **If we can't show a result, you get your fee back.**
 
-If we cannot verify removal or public suppression of any identified target photo, floor plan, or virtual tour by day 45, we refund your service fee.
+If we cannot verify removal or public suppression of any identified target photo, floor plan, or virtual tour by day 60, we refund your service fee.
 
 Changed your mind before we send the first outside request? You get a full refund.
 - This covers the case where nothing we identified is verified removed or suppressed. If some targets are cleared and others remain, that is partial success and does not qualify for this refund.

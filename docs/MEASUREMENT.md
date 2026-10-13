@@ -44,4 +44,4 @@ SELECT refund_reason, refunded_at FROM orders WHERE status = 'refunded' AND is_t
 
 - Approvals and purchases can fall in different weeks, so read conversion over a cohort (for example, approvals in a month and whether each was paid) once volume allows. With the first handful of customers, look at each case individually rather than at percentages.
 - Browser beacons can be blocked; click and start counts are a floor, not an exact figure.
-- Record each refund's reason. The assurance refund (no verified result by day 45) and an early change-of-mind refund mean different things for the business.
+- Record each refund's reason. The assurance refund (no verified result by day 60) and an early change-of-mind refund mean different things for the business.

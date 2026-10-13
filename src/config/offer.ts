@@ -11,6 +11,9 @@
  * locked until both dates are filled in.
  */
 
+/** Day (from completed onboarding) by which a verified result is required, or the service fee is refunded. */
+const ASSURANCE_DAY = 60;
+
 export const offer = {
   brandName: "Home Privacy Cleanup",
   productName: "Home Privacy Cleanup, one residence",
@@ -37,6 +40,7 @@ export const offer = {
 
   serviceDays: 45,
   recheckDay: 60,
+  assuranceDay: ASSURANCE_DAY,
   updateCadence: "weekly",
 
   /**
@@ -45,7 +49,7 @@ export const offer = {
    */
   assurance: {
     headline:
-      "If we cannot verify removal or public suppression of any identified target photo, floor plan, or virtual tour by day 45, we refund your service fee.",
+      `If we cannot verify removal or public suppression of any identified target photo, floor plan, or virtual tour by day ${ASSURANCE_DAY}, we refund your service fee.`,
     beforeWork:
       "Changed your mind before we send the first outside request? You get a full refund.",
     clarifications: [
@@ -68,6 +72,8 @@ export const offer = {
     declinedInquiryDays: 90,
     unpaidApprovedInquiryDays: 180,
     agentInquiryDays: 365,
+    /** Paid orders, authorizations, and work records are kept as business records for this many years. */
+    orderRecordYears: 7,
   },
 } as const;
 

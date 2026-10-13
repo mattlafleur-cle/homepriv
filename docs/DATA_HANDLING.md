@@ -35,7 +35,7 @@ Periods are set in `src/config/offer.ts` and published on the privacy page.
 | Approved or pending inquiries that never became orders | 180 days since last update |
 | Agent inquiries | 365 days |
 | Email outbox copies | 90 days |
-| Paid orders and their inquiries | Not purged automatically (business records). Set the period before launch. |
+| Paid orders and their inquiries | Kept 7 years after the order as business records (`offer.retention.orderRecordYears`). Not purged automatically; delete by hand after that. |
 
 Use `npm run ops -- purge --dry-run` to preview. Schedule the real command daily.
 
@@ -50,4 +50,4 @@ The MVP collects no uploads. If proof-of-address or similar documents are needed
 
 ## Unconfirmed items
 
-Order retention period, hosting provider name, and email provider are listed in docs/LAUNCH_CHECKLIST.md.
+Remaining open items are listed in docs/LAUNCH_CHECKLIST.md.

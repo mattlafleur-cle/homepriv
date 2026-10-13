@@ -21,7 +21,7 @@ export default function RefundsPage() {
       <ul>
         {offer.assurance.clarifications.map((c) => <li key={c}>{c}</li>)}
         <li>
-          &quot;Day {offer.serviceDays}&quot; is counted from the day your onboarding is complete. &quot;Verified&quot; means we
+          &quot;Day {offer.assuranceDay}&quot; is counted from the day your onboarding is complete. It is the day of our recheck, after the {offer.serviceDays}-day active window. &quot;Verified&quot; means we
           checked independently and kept dated evidence; a submitted request or a page that won&apos;t load doesn&apos;t count.
         </li>
       </ul>

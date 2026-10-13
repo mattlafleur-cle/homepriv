@@ -60,12 +60,11 @@ export default function TermsPage() {
 
       <h2>Liability</h2>
       <p>
-        To the extent the law allows, our total liability for the service is limited to the fee you paid. [Final liability wording to
-        be confirmed before launch.]
+        To the extent the law allows, our total liability for the service is limited to the fee you paid.
       </p>
 
       <h2>Governing law</h2>
-      <p>[To be confirmed before launch.]</p>
+      <p>These terms are governed by the laws of the State of Ohio.</p>
 
       <h2>Contact</h2>
       <p>{c.email ? <a className="text-link" href={`mailto:${c.email}`}>{c.email}</a> : "Reply to any email from us."}</p>
