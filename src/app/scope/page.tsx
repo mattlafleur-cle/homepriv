@@ -18,7 +18,7 @@ export default function ScopePage() {
         <li>We find listing photos, floor plans, or virtual tours of it that appear eligible for removal or public suppression.</li>
       </ul>
       <p>
-        We check eligibility before you pay. If a home doesn&apos;t qualify, we tell you why, and nothing is charged. We&apos;re starting with
+        We check eligibility before your card is charged. If a home doesn&apos;t qualify, we tell you why, release any card hold, and nothing is charged. We&apos;re starting with
         homes in {offer.serviceArea}.
       </p>
 

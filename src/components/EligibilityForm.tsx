@@ -63,11 +63,23 @@ const LABELS: Record<string, string> = {
 
 type Result = { refCode: string; outcome: "review" | "listed" };
 
-export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: { formToken: string; mode: Mode; privacyHref?: string }) {
+export function EligibilityForm({
+  formToken,
+  mode,
+  holds = false,
+  privacyHref = "/privacy",
+}: {
+  formToken: string;
+  mode: Mode;
+  /** Stripe is live: place a card hold right after the request is saved. */
+  holds?: boolean;
+  privacyHref?: string;
+}) {
   const [v, setV] = useState(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [result, setResult] = useState<Result>();
   const [honey, setHoney] = useState("");
   const started = useRef(false);
@@ -102,6 +114,11 @@ export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: {
     try {
       const { status, data } = await postJson("/api/eligibility", { ...v, website: honey, formToken });
       if (status === 200 && data.ok) {
+        if (typeof data.holdUrl === "string" && data.holdUrl.startsWith("https://")) {
+          setRedirecting(true);
+          window.location.assign(data.holdUrl);
+          return;
+        }
         setResult({ refCode: String(data.refCode), outcome: data.outcome === "listed" ? "listed" : "review" });
         return;
       }
@@ -302,13 +319,15 @@ export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: {
       <Honeypot value={honey} onChange={setHoney} />
 
       <div>
-        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={submitting} aria-disabled={submitting}>
-          {submitting ? "Sending…" : "Send for review"}
+        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={submitting || redirecting} aria-disabled={submitting || redirecting}>
+          {redirecting ? "Opening secure card page…" : submitting ? "Sending…" : holds ? "Continue to card hold" : "Send for review"}
         </button>
-        <p className="mt-3 text-[0.9375rem] text-muted">
+        <p className="mt-3 text-[0.9375rem] text-muted" aria-live="polite">
           {mode === "interest"
             ? "Nothing is charged. Paid ordering isn't open yet."
-            : "Nothing is charged now. If your home qualifies, you'll get a secure payment link by email."}
+            : holds
+              ? `Next, Stripe places a ${offer.priceLabel} hold on your card. You're charged only if we approve your home. If we don't, we release the hold.`
+              : "Nothing is charged now. If your home qualifies, you'll get a secure payment link by email."}
         </p>
       </div>
     </form>

@@ -1,9 +1,9 @@
 import "server-only";
 import { agentInquirySchema, eligibilitySchema, fieldErrors, onboardingSchema } from "./validation";
 import { checkFormToken, clientIp, rateLimit } from "./guard";
-import { submitInquiry } from "./eligibility";
+import { holdsEnabled, submitInquiry } from "./eligibility";
 import { CLIENT_EVENTS, CTA_LOCATIONS, track } from "./events";
-import { handleStripeWebhook } from "./payments";
+import { handleStripeWebhook, startHold } from "./payments";
 import { completeOnboarding } from "./onboarding";
 import { db, nowIso } from "./db";
 import { newId } from "./tokens";
@@ -57,8 +57,18 @@ export async function handleEligibility(req: Request) {
   if (!parsed.success) return json({ ok: false, fieldErrors: fieldErrors(parsed.error) }, 422);
 
   try {
-    const { refCode, status } = await submitInquiry(parsed.data);
-    return json({ ok: true, refCode, outcome: status === "listed_not_eligible" ? "listed" : "review", mode: effectiveMode() });
+    const { id, refCode, status } = await submitInquiry(parsed.data);
+    let holdUrl: string | undefined;
+    if (status === "pending_review" && holdsEnabled()) {
+      // The request is saved either way. If the hold can't start, we fall back to a payment link after approval.
+      try {
+        holdUrl = (await startHold(id)).redirectTo;
+      } catch (err) {
+        const e = err as { name?: string; type?: string; code?: string };
+        console.error(`[eligibility] hold start failed: ${e.name ?? "unknown"} type=${e.type ?? "-"} code=${e.code ?? "-"}`);
+      }
+    }
+    return json({ ok: true, refCode, outcome: status === "listed_not_eligible" ? "listed" : "review", mode: effectiveMode(), holdUrl });
   } catch (err) {
     console.error(`[eligibility] save failed: ${err instanceof Error ? err.name : "unknown"}`);
     return json({ ok: false, formError: GENERIC_ERROR }, 500);

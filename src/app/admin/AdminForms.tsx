@@ -50,7 +50,7 @@ export function ApproveForm({ id, label = "Approve and send link" }: { id: strin
   );
 }
 
-export function DeclineForm({ id }: { id: string }) {
+export function DeclineForm({ id, label = "Decline and notify" }: { id: string; label?: string }) {
   const [state, action, pending] = useActionState(declineAction, undefined);
   return (
     <form action={action} className="space-y-2">
@@ -68,7 +68,7 @@ export function DeclineForm({ id }: { id: string }) {
         Internal note (optional, not sent)
         <input name="note" className={`${small} mt-1 w-full`} maxLength={500} />
       </label>
-      <button className={btnGhost} disabled={pending}>{pending ? "Working…" : "Decline and notify"}</button>
+      <button className={btnGhost} disabled={pending}>{pending ? "Working…" : label}</button>
       <Result state={state} />
     </form>
   );

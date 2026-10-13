@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { checkPassword, endAdminSession, isAdmin, startAdminSession, adminEnabled } from "@/lib/admin-auth";
-import { approveInquiry, declineInquiry, deleteInquiry, DECLINE_REASONS, type DeclineReason } from "@/lib/eligibility";
-import { refundOrder } from "@/lib/payments";
+import { DECLINE_REASONS, type DeclineReason } from "@/lib/eligibility";
+import { approveRequest, declineRequest, deleteRequest, refundOrder } from "@/lib/payments";
 import { clientIp, rateLimit } from "@/lib/guard";
 import { contact } from "@/config/site";
 
@@ -34,8 +34,10 @@ export type ActionResult = { ok?: string; error?: string; link?: string };
 export async function approveAction(_prev: ActionResult | undefined, form: FormData): Promise<ActionResult> {
   const by = await requireAdmin();
   try {
-    const r = await approveInquiry(String(form.get("id")), by, String(form.get("note") ?? "") || undefined);
+    const r = await approveRequest(String(form.get("id")), by, String(form.get("note") ?? "") || undefined);
     revalidatePath("/admin");
+    if (r.charged) return { ok: `Approved ${r.refCode} and charged the card hold (order ${r.orderNumber}). The customer was emailed the onboarding link.` };
+    if (r.holdExpired) return { ok: `Approved ${r.refCode}. The card hold had expired, so the customer was emailed a payment link instead:`, link: r.link };
     return { ok: `Approved ${r.refCode}. The customer was emailed this link:`, link: r.link };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not approve" };
@@ -47,7 +49,7 @@ export async function declineAction(_prev: ActionResult | undefined, form: FormD
   const reason = String(form.get("reason")) as DeclineReason;
   if (!(reason in DECLINE_REASONS)) return { error: "Choose a reason" };
   try {
-    const r = await declineInquiry(String(form.get("id")), by, reason, String(form.get("note") ?? "") || undefined);
+    const r = await declineRequest(String(form.get("id")), by, reason, String(form.get("note") ?? "") || undefined);
     revalidatePath("/admin");
     return { ok: `Declined ${r.refCode}. The customer was emailed.` };
   } catch (e) {
@@ -72,7 +74,7 @@ export async function deleteAction(_prev: ActionResult | undefined, form: FormDa
   await requireAdmin();
   if (form.get("confirm") !== "DELETE") return { error: 'Type DELETE to confirm' };
   try {
-    await deleteInquiry(String(form.get("id")));
+    await deleteRequest(String(form.get("id")));
     revalidatePath("/admin");
     return { ok: "Deleted." };
   } catch (e) {

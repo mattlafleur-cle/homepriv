@@ -44,6 +44,15 @@ export const DECLINE_REASONS = {
 } as const;
 export type DeclineReason = keyof typeof DECLINE_REASONS;
 
+/**
+ * Card holds: with Stripe configured, the request form places a hold for the
+ * price right after submission. The hold is charged only when a person
+ * approves the home, and released if we decline. Without Stripe (interest
+ * mode, or the simulated preview) the original flow applies: approval first,
+ * then a payment link.
+ */
+export const holdsEnabled = () => paymentProvider() === "stripe";
+
 export function firstName(name: string) {
   return name.trim().split(/\s+/)[0] ?? "there";
 }
@@ -117,14 +126,16 @@ export async function submitInquiry(data: EligibilityData) {
         `Thanks for telling us about your home. A person will review it before anything is charged. We look at whether the home is off the market and whether there are listing photos, floor plans, or virtual tours we can work on.`,
         mode === "interest"
           ? "Paid ordering isn't open yet. We'll let you know what we find and when ordering opens."
-          : `If it's a fit, we'll email you a secure link to pay ${offer.priceLabel}. If it isn't, we'll tell you why.`,
+          : holdsEnabled()
+            ? `If you placed a card hold, we charge the ${offer.priceLabel} only if your home qualifies, and release the hold if it doesn't. If you didn't finish the card step, we'll email you a secure payment link if it's a fit.`
+            : `If it's a fit, we'll email you a secure link to pay ${offer.priceLabel}. If it isn't, we'll tell you why.`,
         `Your reference number is ${refCode}. Reply to this email if you have questions.`,
       ],
     });
     await notifyOperator(`New eligibility request ${refCode}`, [`A new eligibility request (${refCode}) is waiting for review.`], id);
   }
 
-  return { refCode, status };
+  return { id, refCode, status };
 }
 
 export async function findInquiry(idOrRef: string): Promise<InquiryRow | undefined> {
@@ -146,7 +157,7 @@ export function customerLink(token: string) {
  * Approve a request and issue a fresh secure link. Re-running it on an
  * approved request replaces the link (the old one stops working).
  */
-export async function approveInquiry(idOrRef: string, decidedBy: string, note?: string) {
+export async function approveInquiry(idOrRef: string, decidedBy: string, note?: string, opts: { notify?: boolean } = {}) {
   const found = await findInquiry(idOrRef);
   if (!found) throw new Error("Inquiry not found");
   if (found.status !== "pending_review" && found.status !== "approved") {
@@ -158,6 +169,12 @@ export async function approveInquiry(idOrRef: string, decidedBy: string, note?: 
   await track("eligibility_approved", { subject: found.id, isTest: Boolean(found.is_test) });
 
   const link = customerLink(token);
+  if (opts.notify !== false) await sendApprovalEmail(found, link);
+  return { token, link, refCode: found.ref_code, inquiryId: found.id };
+}
+
+/** The "your home qualifies" email with a payment link (or, in interest mode, a heads-up). */
+export async function sendApprovalEmail(found: InquiryRow, link: string) {
   const canPay = paymentProvider() !== "none";
   await sendEmail({
     template: canPay ? "approved_checkout" : "approved_interest",
@@ -179,11 +196,15 @@ export async function approveInquiry(idOrRef: string, decidedBy: string, note?: 
         ],
     button: canPay ? { label: "Review and pay", url: link } : undefined,
   });
-
-  return { token, link, refCode: found.ref_code };
 }
 
-export async function declineInquiry(idOrRef: string, decidedBy: string, reason: DeclineReason, note?: string) {
+export async function declineInquiry(
+  idOrRef: string,
+  decidedBy: string,
+  reason: DeclineReason,
+  note?: string,
+  opts: { holdReleased?: boolean } = {},
+) {
   const found = await findInquiry(idOrRef);
   if (!found) throw new Error("Inquiry not found");
   if (found.status === "paid") throw new Error("Inquiry is already paid; refund it instead");
@@ -199,7 +220,10 @@ export async function declineInquiry(idOrRef: string, decidedBy: string, reason:
       `Hi ${firstName(found.name)},`,
       "Thanks for your patience while we looked at your home.",
       DECLINE_REASONS[reason],
-      "You haven't been charged anything. If your situation changes, you're welcome to send a new request.",
+      opts.holdReleased
+        ? "You haven't been charged anything, and we've released the hold on your card. Your bank may take a few days to remove it from your statement."
+        : "You haven't been charged anything. If your situation changes, you're welcome to send a new request.",
+      ...(opts.holdReleased ? ["If your situation changes, you're welcome to send a new request."] : []),
     ],
   });
   return { refCode: found.ref_code };

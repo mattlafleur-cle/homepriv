@@ -176,6 +176,9 @@ export function modeCopy(mode: LaunchMode = effectiveMode()) {
   }
   return {
     primaryCta: "Start my home cleanup",
-    ctaSupport: `${offer.priceLabel} once${offer.priceNote ? ` (${offer.priceNote.toLowerCase()})` : ""}. One home. Eligibility checked before payment.`,
+    ctaSupport:
+      paymentProvider() === "stripe"
+        ? `${offer.priceLabel} once${offer.priceNote ? ` (${offer.priceNote.toLowerCase()})` : ""}. One home. Your card is charged only if your home qualifies.`
+        : `${offer.priceLabel} once${offer.priceNote ? ` (${offer.priceNote.toLowerCase()})` : ""}. One home. Eligibility checked before payment.`,
   };
 }

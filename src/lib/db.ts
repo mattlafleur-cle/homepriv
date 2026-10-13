@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS checkouts (
   amount_cents INTEGER NOT NULL,
   currency TEXT NOT NULL,
   url TEXT,
+  purpose TEXT NOT NULL DEFAULT 'pay',
+  payment_intent TEXT,
+  authorized_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -149,6 +152,21 @@ export function dbUrl() {
 
 export const isHostedDb = () => /^(libsql|https|wss?):\/\//.test(dbUrl());
 
+/** Columns added after the first deploy. CREATE TABLE IF NOT EXISTS won't add them to an existing table. */
+const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
+  ["checkouts", "purpose", "ALTER TABLE checkouts ADD COLUMN purpose TEXT NOT NULL DEFAULT 'pay'"],
+  ["checkouts", "payment_intent", "ALTER TABLE checkouts ADD COLUMN payment_intent TEXT"],
+  ["checkouts", "authorized_at", "ALTER TABLE checkouts ADD COLUMN authorized_at TEXT"],
+];
+
+async function migrate(client: Client) {
+  for (const [table, column, ddl] of ADDED_COLUMNS) {
+    const cols = await client.execute(`PRAGMA table_info(${table})`);
+    const nameIdx = cols.columns.indexOf("name");
+    if (!cols.rows.some((r) => r[nameIdx] === column)) await client.execute(ddl);
+  }
+}
+
 function connection() {
   const g = globalThis as GlobalWithDb;
   if (g.__hpcDb) return g.__hpcDb;
@@ -158,6 +176,7 @@ function connection() {
   const ready = (async () => {
     if (!isHostedDb()) await client.execute("PRAGMA foreign_keys = ON");
     await client.executeMultiple(SCHEMA);
+    await migrate(client);
   })();
   g.__hpcDb = { client, ready };
   ready.catch(() => {

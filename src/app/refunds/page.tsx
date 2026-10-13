@@ -10,6 +10,12 @@ export default function RefundsPage() {
   const email = contact().email;
   return (
     <LegalPage title="Refund policy" intro="Plain terms for when you get your money back.">
+      <h2>Card holds</h2>
+      <p>
+        If you placed a card hold when you sent your request, it isn&apos;t a charge. We release it if we decline your home or if you
+        ask us to cancel before we decide. We charge it only when we approve your home, and the refund terms below apply from then on.
+      </p>
+
       <h2>Before we start work</h2>
       <p>
         If you change your mind before we send the first request to any outside website, agent, brokerage, or MLS contact, we refund

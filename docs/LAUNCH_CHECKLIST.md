@@ -30,7 +30,9 @@ Sales mode stays locked (the site runs in interest mode) until the items marked 
 
 ## Operational readiness
 
-- [ ] Stripe webhook endpoint created with the four `checkout.session.*` events, and a live test purchase refunded end to end.
+- [ ] Stripe webhook endpoint created with the four `checkout.session.*` events plus `payment_intent.canceled` (marks expired card holds), and a live test purchase refunded end to end.
+- [ ] Card-hold test: submit a request, place the hold, approve it in /admin (charges the hold), then refund. Submit a second request, place the hold, decline it, and confirm the hold is released in Stripe.
+- [ ] Review requests with a card hold within about 5 days. Holds usually expire around day 7 (Visa can be shorter); an expired hold falls back to a payment link.
 - [ ] Email sender domain verified (SPF/DKIM) and a test message received in Gmail and Outlook.
 - [ ] Database backups confirmed (Turso keeps point-in-time history; confirm what your plan includes) and one restore tested.
 - [ ] Daily `npm run ops -- purge` scheduled.

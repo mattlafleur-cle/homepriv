@@ -3,8 +3,8 @@
  *
  *   list [status]                 List inquiries (default: pending_review)
  *   show <ref>                    Show one inquiry
- *   approve <ref> [note]          Approve and email a secure checkout link
- *   decline <ref> <reason> [note] Decline (reasons: listed, no_exposure, out_of_area, other)
+ *   approve <ref> [note]          Approve: charge the card hold if there is one, otherwise email a checkout link
+ *   decline <ref> <reason> [note] Decline and release any card hold (reasons: listed, no_exposure, out_of_area, other)
  *   refund <order> <reason>       Refund an order (issues the Stripe refund for Stripe payments)
  *   delete <ref>                  Permanently delete an unpaid inquiry
  *   purge [--dry-run]             Apply the retention periods in src/config/offer.ts
@@ -12,8 +12,8 @@
  *   readiness                     What sales mode still needs
  */
 import { db } from "@/lib/db";
-import { addressLine, approveInquiry, declineInquiry, deleteInquiry, DECLINE_REASONS, findInquiry, type DeclineReason, type InquiryRow } from "@/lib/eligibility";
-import { refundOrder } from "@/lib/payments";
+import { addressLine, DECLINE_REASONS, findInquiry, type DeclineReason, type InquiryRow } from "@/lib/eligibility";
+import { approveRequest, declineRequest, deleteRequest, refundOrder } from "@/lib/payments";
 import { funnelSummary } from "@/lib/events";
 import { purgeExpired } from "@/lib/retention";
 import { contact, effectiveMode, salesReadiness } from "@/config/site";
@@ -40,14 +40,15 @@ async function main() {
       break;
     }
     case "approve": {
-      const r = await approveInquiry(args[0] ?? "", operator, args.slice(1).join(" ") || undefined);
-      console.log(`Approved ${r.refCode}. Customer link (also emailed):\n${r.link}`);
+      const r = await approveRequest(args[0] ?? "", operator, args.slice(1).join(" ") || undefined);
+      if (r.charged) console.log(`Approved ${r.refCode} and charged the card hold (order ${r.orderNumber}). Onboarding link emailed.`);
+      else console.log(`Approved ${r.refCode}.${r.holdExpired ? " The card hold had expired." : ""} Customer link (also emailed):\n${r.link}`);
       break;
     }
     case "decline": {
       const reason = args[1] as DeclineReason;
       if (!(reason in DECLINE_REASONS)) throw new Error(`Reason must be one of: ${Object.keys(DECLINE_REASONS).join(", ")}`);
-      const r = await declineInquiry(args[0] ?? "", operator, reason, args.slice(2).join(" ") || undefined);
+      const r = await declineRequest(args[0] ?? "", operator, reason, args.slice(2).join(" ") || undefined);
       console.log(`Declined ${r.refCode}.`);
       break;
     }
@@ -57,7 +58,7 @@ async function main() {
       break;
     }
     case "delete": {
-      console.log(await deleteInquiry(args[0] ?? "") ? "Deleted." : "Not found.");
+      console.log(await deleteRequest(args[0] ?? "") ? "Deleted." : "Not found.");
       break;
     }
     case "purge": {

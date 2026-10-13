@@ -20,7 +20,7 @@ export default function TermsPage() {
 
       <h2>Eligibility and approval</h2>
       <p>
-        We review each home before payment and may decline any request. You confirm that you own the home or are authorized by its
+        We review each home before charging your card and may decline any request. You confirm that you own the home or are authorized by its
         owner, and that the information you give us is accurate. Your statement isn&apos;t verified ownership; some websites may
         require proof directly from the owner.
       </p>
@@ -53,6 +53,12 @@ export default function TermsPage() {
       </p>
 
       <h2>Payment and refunds</h2>
+      <p>
+        When you send a request, we may ask you to place a temporary hold for the price on your card through Stripe. A hold is
+        not a charge. We charge it only if we approve your home. If we decline, or you ask us to cancel before we decide, we
+        release it. Card holds usually expire after about 7 days; if yours expires before we decide, we&apos;ll email you a payment
+        link instead. Your bank decides how long a released hold takes to drop off your statement.
+      </p>
       <p>
         Payment is taken through Stripe at the price shown at checkout. Refunds follow the{" "}
         <Link className="text-link" href="/refunds">refund policy</Link>.

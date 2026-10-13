@@ -7,7 +7,7 @@ Everything lives in one SQLite-compatible database: a hosted Turso database in p
 | Table | Contents | Personal data |
 | --- | --- | --- |
 | `inquiries` | Eligibility requests: address, name, email, optional phone, relationship statement, listing status and links, notes, consents, review decision | Yes |
-| `checkouts` | Checkout sessions: provider, session id, status, amount | No (linked to an inquiry) |
+| `checkouts` | Checkout sessions and card holds: provider, session id, purpose (pay or hold), Stripe PaymentIntent id, status, amount, hold time | No (linked to an inquiry) |
 | `orders` | Paid orders: payment reference, typed authorization name and time, listing agent notes, Street View consent, service dates, refunds | Yes |
 | `agent_inquiries` | Agent name, email, brokerage, message | Yes |
 | `email_outbox` | Copy of every email sent or held, including links | Yes |

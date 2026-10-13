@@ -44,7 +44,7 @@ Set `LAUNCH_MODE` and restart the server. No rebuild is needed; mode is read at 
 | --- | --- | --- |
 | `preview` (default) | Full sales flow with a "Preview site" banner. Records are marked as test data. | Simulated on-site test payment, or Stripe test mode if an `sk_test_` key and webhook secret are set. Live keys are never used. Email is never sent. |
 | `interest` | Real inquiries. The banner, buttons, and form say paid ordering isn't open yet. | None. Approved customers are told ordering isn't open. |
-| `sales` | Paid ordering after eligibility approval. | Stripe Checkout, confirmed only by a verified webhook. |
+| `sales` | Paid ordering: a card hold at request time, charged only after eligibility approval. | Stripe Checkout (manual capture for holds), confirmed only by a verified webhook. |
 
 Sales mode only takes effect when every item in [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) is met. Otherwise the site runs in interest mode, so nothing pretends a purchase is possible. In development, a yellow status bar at the top lists exactly what's missing; `npm run ops -- readiness` shows the same list anywhere.
 
@@ -60,14 +60,16 @@ Sales mode only takes effect when every item in [docs/LAUNCH_CHECKLIST.md](docs/
 
 1. **Intake** (`/start`): address, name, email, ownership or authorization statement, listing status, optional links and phone. Server-side validation, rate limiting, a honeypot field, and a signed form timer. No account, no uploads.
 2. **Routing:** homes listed right now are told immediately that they aren't eligible yet. Everything else waits for manual review. No automatic exposure scan runs.
-3. **Review:** the operator approves or declines in `/admin` or the CLI. Approval creates a long random customer link (only its hash is stored) and emails it.
-4. **Checkout:** the server creates a Stripe Checkout session for the amount in `offer.ts`. The success redirect only shows "confirming payment".
+3. **Card hold (when Stripe is configured):** right after the request is saved, the customer goes to a Stripe Checkout page with `capture_method: manual`. Stripe places a hold for the price; nothing is charged. The hold counts as placed only when a signed `checkout.session.completed` webhook arrives and Stripe confirms the PaymentIntent is `requires_capture`. Skipping the hold is allowed; the request still goes to review.
+4. **Review:** the operator approves or declines in `/admin` or the CLI.
+   - With a hold: approval captures it and creates the order directly (the customer is emailed the onboarding link). Decline or delete releases it. If the hold expired (usually around day 7), approval falls back to the payment link below.
+   - Without a hold: approval creates a long random customer link (only its hash is stored) and emails it. The customer pays through a normal Stripe Checkout session for the amount in `offer.ts`. The success redirect only shows "confirming payment".
 5. **Confirmation:** a signed `checkout.session.completed` (or `async_payment_succeeded`) webhook creates the order. Duplicate and concurrent webhooks produce exactly one order, one email, and one purchase count. Amount mismatches are rejected.
 6. **Onboarding:** the customer signs the written authorization (typed name) and can separately opt in to a Street View blur request (unchecked by default). The service clock starts here.
 
 ## Stripe setup
 
-1. Create a webhook endpoint at `https://<your-site>/api/stripe/webhook` with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`.
+1. Create a webhook endpoint at `https://<your-site>/api/stripe/webhook` with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, and `payment_intent.canceled` (records expired card holds).
 2. Put the secret key and the endpoint's signing secret in `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
 3. To rehearse locally with Stripe test mode: `stripe listen --forward-to localhost:3000/api/stripe/webhook` and use the `whsec_` it prints.
 

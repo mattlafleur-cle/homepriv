@@ -1,7 +1,7 @@
 import { offer, coveredSitesSentence } from "@/config/offer";
 
 /** Homepage FAQ. Answers must stay within what the service actually does. */
-export function faqItems(opts: { assuranceConfirmed: boolean }) {
+export function faqItems(opts: { assuranceConfirmed: boolean; holds?: boolean }) {
   return [
     {
       q: "Can't I do this myself?",
@@ -57,6 +57,13 @@ export function faqItems(opts: { assuranceConfirmed: boolean }) {
         `Yes, it can happen. A new listing, a site update, or a copy from another source can bring content back. That's why we recheck around day ${offer.recheckDay} and report what we find. Ongoing monitoring after that isn't part of this package.`,
       ],
     },
+    ...(opts.holds ? [{
+      q: "When is my card charged?",
+      a: [
+        `When you send your request, Stripe places a ${offer.priceLabel} hold on your card. A hold isn't a charge. We charge it only after a person reviews your home and approves it. If we decline, we release the hold and tell you why.`,
+        "Holds usually last about 7 days. If yours expires before we decide, we'll email you a secure payment link instead. Your bank decides how quickly a released hold disappears from your statement.",
+      ],
+    }] : []),
     {
       q: "When do I get a refund?",
       a: opts.assuranceConfirmed

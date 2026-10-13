@@ -7,7 +7,7 @@ import { StrangerExample } from "@/components/StrangerExample";
 import { AgentForm } from "@/components/AgentForm";
 import { Faq } from "@/components/Faq";
 import { coveredSitesSentence, offer, termsConfirmed } from "@/config/offer";
-import { effectiveMode, modeCopy, siteUrl } from "@/config/site";
+import { effectiveMode, modeCopy, paymentProvider, siteUrl } from "@/config/site";
 import { faqItems } from "@/content/faq";
 import { issueFormToken } from "@/lib/guard";
 
@@ -47,9 +47,10 @@ const COMPARISON = [
 
 export default function Home() {
   const mode = effectiveMode();
+  const holds = mode !== "interest" && paymentProvider() === "stripe";
   const { primaryCta, ctaSupport } = modeCopy(mode);
   const confirmed = termsConfirmed();
-  const faqs = faqItems({ assuranceConfirmed: confirmed });
+  const faqs = faqItems({ assuranceConfirmed: confirmed, holds });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -67,7 +68,7 @@ export default function Home() {
             "@type": "Offer",
             price: (offer.priceCents / 100).toFixed(2),
             priceCurrency: "USD",
-            description: "One-time fee for one eligible off-market residence. Eligibility is reviewed before payment.",
+            description: "One-time fee for one eligible off-market residence. Eligibility is reviewed before the card is charged.",
           },
         }
       : {}),
@@ -191,11 +192,13 @@ export default function Home() {
                   d:
                     mode === "interest"
                       ? "Share the address and a few details. A person reviews it. Paid ordering isn't open yet, so nothing is charged."
-                      : "Share the address and a few details. A person reviews it before you pay anything. If your home isn't a fit, we'll tell you.",
+                      : holds
+                        ? "Share the address and a few details, and place a card hold. A person reviews your home before your card is charged. If it isn't a fit, we release the hold and tell you why."
+                        : "Share the address and a few details. A person reviews it before you pay anything. If your home isn't a fit, we'll tell you.",
                 },
                 {
                   t: "We manage the cleanup",
-                  d: `After payment, a short onboarding form collects your written authorization. Then we audit, submit requests, and follow up for ${offer.serviceDays} days, with a weekly update.`,
+                  d: `${holds ? "Once we approve and charge the hold" : "After payment"}, a short onboarding form collects your written authorization. Then we audit, submit requests, and follow up for ${offer.serviceDays} days, with a weekly update.`,
                 },
                 {
                   t: "See what changed",
@@ -240,7 +243,7 @@ export default function Home() {
                     <p className="rounded-full bg-sage px-3 py-1 text-[0.875rem] font-semibold text-evergreen">No subscription</p>
                   </div>
                 </div>
-                <p className="mt-4 text-muted">For one home that isn&apos;t listed for sale or rent. We confirm eligibility before you pay.</p>
+                <p className="mt-4 text-muted">For one home that isn&apos;t listed for sale or rent. We confirm eligibility before your card is charged.</p>
 
                 <h3 className="mt-8 font-sans text-[1rem] font-semibold">What&apos;s included</h3>
                 <ul className="mt-3 space-y-3">

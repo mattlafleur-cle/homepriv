@@ -2,7 +2,19 @@ import "server-only";
 import Stripe from "stripe";
 import { db, nowIso, tx } from "./db";
 import { hashToken, newAccessToken, newId, newRefCode } from "./tokens";
-import { addressLine, customerLink, firstName, inquiryByToken, type InquiryRow } from "./eligibility";
+import {
+  addressLine,
+  approveInquiry,
+  customerLink,
+  declineInquiry,
+  deleteInquiry,
+  findInquiry,
+  firstName,
+  holdsEnabled,
+  inquiryByToken,
+  type DeclineReason,
+  type InquiryRow,
+} from "./eligibility";
 import { sendEmail, notifyOperator } from "./email";
 import { track } from "./events";
 import { paymentProvider, siteUrl, stripeKeys } from "@/config/site";
@@ -17,6 +29,11 @@ import { offer } from "@/config/offer";
  *   Landing on the checkout success URL proves nothing and creates nothing.
  * - Confirmation is idempotent: repeated or concurrent webhooks for the same
  *   checkout produce exactly one order, one email, and one purchase event.
+ * - Card holds (purpose 'hold'): placed right after the request form, charged
+ *   only when the operator approves the home, released on decline or delete.
+ *   A hold is "authorized" only after Stripe confirms the PaymentIntent is
+ *   waiting for capture. Holds usually last about 7 days (Visa can be
+ *   shorter); an expired hold falls back to emailing a payment link.
  */
 
 export type CheckoutRow = {
@@ -24,12 +41,22 @@ export type CheckoutRow = {
   inquiry_id: string;
   provider: "stripe" | "simulated";
   provider_session_id: string;
-  status: "open" | "processing" | "completed" | "expired" | "canceled" | "failed";
+  status: "open" | "processing" | "authorized" | "released" | "completed" | "expired" | "canceled" | "failed";
   amount_cents: number;
   currency: string;
   url: string | null;
+  purpose: "pay" | "hold";
+  payment_intent: string | null;
+  authorized_at: string | null;
   created_at: string;
 };
+
+/** Holds older than this are shown as at risk of expiring in /admin. */
+export const HOLD_WARN_DAYS = 5;
+
+export function holdAgeDays(authorizedAt: string, now = Date.now()) {
+  return Math.floor((now - Date.parse(authorizedAt)) / 86_400_000);
+}
 
 export type OrderRow = {
   id: string;
@@ -95,8 +122,11 @@ export async function startCheckout(token: string): Promise<{ redirectTo: string
   const provider = paymentProvider();
   if (provider === "none") throw new CheckoutUnavailable("ordering_closed");
 
-  // Reuse a recent open session instead of creating duplicates on double-clicks.
-  const existing = await latestCheckout(inquiry.id);
+  // Reuse a recent open payment session instead of creating duplicates on double-clicks.
+  // Hold sessions are never reused here: a payment link must charge immediately.
+  const existing = await db.get("SELECT * FROM checkouts WHERE inquiry_id = ? AND purpose = 'pay' ORDER BY created_at DESC LIMIT 1", inquiry.id) as
+    | CheckoutRow
+    | undefined;
   const fresh = existing && Date.now() - Date.parse(existing.created_at) < 20 * 60 * 60 * 1000;
   if (existing && fresh && existing.status === "open" && existing.provider === provider && existing.url) {
     return { redirectTo: existing.url };
@@ -147,6 +177,134 @@ export async function startCheckout(token: string): Promise<{ redirectTo: string
   return { redirectTo: url };
 }
 
+/** The authorized card hold for an inquiry, if one is waiting to be charged or released. */
+export async function activeHold(inquiryId: string) {
+  return await db.get("SELECT * FROM checkouts WHERE inquiry_id = ? AND purpose = 'hold' AND status = 'authorized' ORDER BY created_at DESC LIMIT 1", inquiryId) as
+    | CheckoutRow
+    | undefined;
+}
+
+/**
+ * Start a card hold for a request that is waiting for review. Called right
+ * after the request form is saved. Returns the Stripe page to send the
+ * customer to. The success page proves nothing; only the webhook marks the
+ * hold as authorized.
+ */
+export async function startHold(inquiryId: string): Promise<{ redirectTo: string }> {
+  if (!holdsEnabled()) throw new CheckoutUnavailable("holds_disabled");
+  const inquiry = await db.get("SELECT * FROM inquiries WHERE id = ?", inquiryId) as InquiryRow | undefined;
+  if (!inquiry || inquiry.status !== "pending_review") throw new CheckoutUnavailable("not_pending");
+
+  const checkoutId = newId();
+  const now = nowIso();
+  const session = await stripe().checkout.sessions.create(
+    {
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: offer.currency,
+            unit_amount: offer.priceCents,
+            product_data: {
+              name: offer.productName,
+              description: `Card hold only. You're charged only if we approve your home; otherwise the hold is released. ${offer.serviceDays}-day service window, final report, and day-${offer.recheckDay} recheck.`,
+            },
+          },
+        },
+      ],
+      customer_email: inquiry.email,
+      client_reference_id: inquiry.id,
+      metadata: { inquiry_id: inquiry.id, checkout_id: checkoutId, purpose: "hold" },
+      payment_intent_data: {
+        capture_method: "manual",
+        metadata: { inquiry_id: inquiry.id, checkout_id: checkoutId, purpose: "hold" },
+      },
+      success_url: `${siteUrl()}/start/held`,
+      cancel_url: `${siteUrl()}/start/held?skipped=1`,
+    },
+    { idempotencyKey: `hold-${checkoutId}` },
+  );
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  await db.run("INSERT INTO checkouts(id, inquiry_id, provider, provider_session_id, status, amount_cents, currency, url, purpose, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", checkoutId, inquiry.id, "stripe", session.id, "open", offer.priceCents, offer.currency, session.url, "hold", now, now);
+  await track("checkout_started", { subject: checkoutId, isTest: Boolean(inquiry.is_test) });
+  return { redirectTo: session.url };
+}
+
+function stripeErrorCode(err: unknown) {
+  return (err as { code?: string } | null)?.code;
+}
+
+/** Cancel a hold's PaymentIntent. A hold Stripe already canceled (for example, expired) counts as released. */
+async function releaseHold(hold: CheckoutRow) {
+  if (hold.payment_intent) {
+    try {
+      await stripe().paymentIntents.cancel(hold.payment_intent, {}, { idempotencyKey: `release-${hold.id}` });
+    } catch (err) {
+      if (stripeErrorCode(err) !== "payment_intent_unexpected_state") throw err;
+    }
+  }
+  await db.run("UPDATE checkouts SET status='released', updated_at=? WHERE id=?", nowIso(), hold.id);
+}
+
+/**
+ * Approve a request. With an authorized hold, the hold is charged and the
+ * customer goes straight to onboarding. Without one (or if the hold expired),
+ * the customer is emailed a payment link as before.
+ */
+export async function approveRequest(idOrRef: string, decidedBy: string, note?: string) {
+  const found = await findInquiry(idOrRef);
+  if (!found) throw new Error("Inquiry not found");
+  const hold = found.status === "pending_review" || found.status === "approved" ? await activeHold(found.id) : undefined;
+  if (!hold || !hold.payment_intent) {
+    const r = await approveInquiry(found.id, decidedBy, note);
+    return { ...r, charged: false as const, holdExpired: false };
+  }
+
+  let captured: Stripe.PaymentIntent;
+  try {
+    captured = await stripe().paymentIntents.capture(hold.payment_intent, {}, { idempotencyKey: `capture-${hold.id}` });
+  } catch (err) {
+    // Expired or already canceled: release it on our side and fall back to a payment link.
+    if (stripeErrorCode(err) !== "payment_intent_unexpected_state") throw err;
+    await db.run("UPDATE checkouts SET status='released', updated_at=? WHERE id=?", nowIso(), hold.id);
+    const r = await approveInquiry(found.id, decidedBy, note);
+    return { ...r, charged: false as const, holdExpired: true };
+  }
+  if (captured.status !== "succeeded") throw new Error(`Hold capture returned ${captured.status}; check Stripe before retrying`);
+
+  const r = await approveInquiry(found.id, decidedBy, note, { notify: false });
+  const result = await confirmPayment({
+    sessionId: hold.provider_session_id,
+    amountCents: captured.amount_received,
+    currency: captured.currency,
+    paymentRef: captured.id,
+    fromHold: true,
+  });
+  if ("error" in result) throw new Error(`Charged in Stripe but not recorded (${result.error}); check the order before retrying`);
+  return { ...r, charged: true as const, holdExpired: false, orderNumber: result.order.order_number };
+}
+
+/** Decline a request, releasing any card hold first so the email can say so truthfully. */
+export async function declineRequest(idOrRef: string, decidedBy: string, reason: DeclineReason, note?: string) {
+  const found = await findInquiry(idOrRef);
+  if (!found) throw new Error("Inquiry not found");
+  const hold = found.status !== "paid" ? await activeHold(found.id) : undefined;
+  if (hold) await releaseHold(hold);
+  return await declineInquiry(found.id, decidedBy, reason, note, { holdReleased: Boolean(hold) });
+}
+
+/** Delete an unpaid request, releasing any card hold first. */
+export async function deleteRequest(idOrRef: string) {
+  const found = await findInquiry(idOrRef);
+  if (!found) return false;
+  if (found.status !== "paid") {
+    const hold = await activeHold(found.id);
+    if (hold) await releaseHold(hold);
+  }
+  return await deleteInquiry(found.id);
+}
+
 async function setCheckoutStatus(sessionId: string, status: CheckoutRow["status"]) {
   await db.run("UPDATE checkouts SET status=?, updated_at=? WHERE provider_session_id=? AND status IN ('open','processing')", status, nowIso(), sessionId);
 }
@@ -160,6 +318,8 @@ export async function confirmPayment(input: {
   amountCents: number | null;
   currency: string | null;
   paymentRef?: string | null;
+  /** The charge came from capturing a card hold at approval time. */
+  fromHold?: boolean;
 }): Promise<{ order: OrderRow; created: boolean } | { error: string }> {
   const checkout = await db.get("SELECT * FROM checkouts WHERE provider_session_id = ?", input.sessionId) as
     | CheckoutRow
@@ -221,11 +381,15 @@ export async function confirmPayment(input: {
     await sendEmail({
       template: "payment_confirmed",
       to: inquiry.email,
-      subject: `Payment received: next step for your home (${result.order.order_number})`,
+      subject: input.fromHold
+        ? `Your home qualifies: next step (${result.order.order_number})`
+        : `Payment received: next step for your home (${result.order.order_number})`,
       relatedId: inquiry.id,
       paragraphs: [
         `Hi ${firstName(inquiry.name)},`,
-        `We received your payment of ${formatMoney(result.order.amount_cents)} for ${addressLine(inquiry)}. Thank you.`,
+        input.fromHold
+          ? `We reviewed ${addressLine(inquiry)} and it qualifies. We've charged the ${formatMoney(result.order.amount_cents)} hold you placed on your card. Thank you.`
+          : `We received your payment of ${formatMoney(result.order.amount_cents)} for ${addressLine(inquiry)}. Thank you.`,
         "One step is left before we start: a short onboarding form with your written authorization for us to act on your behalf. It takes a few minutes.",
         `Your ${offer.serviceDays}-day service window starts when the form is complete.`,
         `Order number: ${result.order.order_number}`,
@@ -237,6 +401,33 @@ export async function confirmPayment(input: {
     ]);
   }
   return result;
+}
+
+/**
+ * A hold checkout finished. Mark it authorized only after Stripe confirms the
+ * PaymentIntent is waiting for capture for the full amount.
+ */
+async function recordHold(checkout: CheckoutRow, paymentRef: string | undefined) {
+  if (!paymentRef) {
+    await setCheckoutStatus(checkout.provider_session_id, "processing");
+    return;
+  }
+  const intent = await stripe().paymentIntents.retrieve(paymentRef);
+  const inquiry = await db.get("SELECT status FROM inquiries WHERE id = ?", checkout.inquiry_id) as { status: string } | undefined;
+  if (intent.status === "requires_capture" && inquiry?.status !== "pending_review") {
+    // The request was already decided (or a payment link was used) before this hold finished. Don't hold money for nothing.
+    await db.run("UPDATE checkouts SET payment_intent=?, updated_at=? WHERE id=?", intent.id, nowIso(), checkout.id);
+    await releaseHold({ ...checkout, payment_intent: intent.id });
+    return;
+  }
+  if (intent.status === "requires_capture" && intent.amount_capturable === checkout.amount_cents && intent.currency === checkout.currency) {
+    const now = nowIso();
+    await db.run("UPDATE checkouts SET status='authorized', payment_intent=?, authorized_at=?, updated_at=? WHERE id=? AND status IN ('open','processing')", intent.id, now, now, checkout.id);
+  } else if (intent.status === "canceled") {
+    await setCheckoutStatus(checkout.provider_session_id, "failed");
+  } else {
+    await db.run("UPDATE checkouts SET status='processing', payment_intent=?, updated_at=? WHERE id=? AND status='open'", intent.id, nowIso(), checkout.id);
+  }
 }
 
 /** Verify and process a Stripe webhook. Throws on a bad signature. */
@@ -252,9 +443,19 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
   if (event.type.startsWith("checkout.session.")) {
     const session = event.data.object as Stripe.Checkout.Session;
     const paymentRef = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    const checkout = await db.get("SELECT * FROM checkouts WHERE provider_session_id = ?", session.id) as CheckoutRow | undefined;
     switch (event.type) {
       case "checkout.session.completed":
-        if (session.payment_status === "paid" || session.payment_status === "no_payment_required") {
+        if (checkout?.purpose === "hold") {
+          await recordHold(checkout, paymentRef);
+        } else if (!checkout && session.metadata?.purpose === "hold" && paymentRef) {
+          // The request was deleted before the hold finished: release it.
+          try {
+            await stripe().paymentIntents.cancel(paymentRef);
+          } catch (err) {
+            if (stripeErrorCode(err) !== "payment_intent_unexpected_state") throw err;
+          }
+        } else if (session.payment_status === "paid" || session.payment_status === "no_payment_required") {
           await confirmPayment({
             sessionId: session.id,
             amountCents: session.amount_total,
@@ -275,6 +476,10 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
         await setCheckoutStatus(session.id, "expired");
         break;
     }
+  } else if (event.type === "payment_intent.canceled") {
+    // A hold expired or was canceled in the Stripe dashboard.
+    const intent = event.data.object as Stripe.PaymentIntent;
+    await db.run("UPDATE checkouts SET status='released', updated_at=? WHERE payment_intent=? AND purpose='hold' AND status='authorized'", nowIso(), intent.id);
   }
 
   // Recorded only after successful processing, so a failure lets Stripe retry.

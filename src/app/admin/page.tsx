@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { addressLine, type InquiryRow } from "@/lib/eligibility";
-import { formatMoney, type OrderRow } from "@/lib/payments";
+import { formatMoney, HOLD_WARN_DAYS, holdAgeDays, type CheckoutRow, type OrderRow } from "@/lib/payments";
 import { formatDate } from "@/lib/onboarding";
 import { funnelSummary } from "@/lib/events";
 import { effectiveMode, requestedMode, salesReadiness } from "@/config/site";
@@ -17,7 +17,22 @@ type Agent = { id: string; name: string; email: string; brokerage: string | null
 
 const pct = (n: number | null) => (n === null ? "n/a" : `${Math.round(n * 100)}%`);
 
-function InquiryCard({ i, actions }: { i: InquiryRow; actions?: React.ReactNode }) {
+function HoldLine({ hold }: { hold?: CheckoutRow }) {
+  if (!hold?.authorized_at) return <><dt className="text-muted">Card hold</dt><dd>none (approval emails a payment link)</dd></>;
+  const days = holdAgeDays(hold.authorized_at);
+  const when = new Date(hold.authorized_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  return (
+    <>
+      <dt className="text-muted">Card hold</dt>
+      <dd>
+        <strong>{formatMoney(hold.amount_cents)} held</strong> since {when} ({days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} ago`})
+        {days >= HOLD_WARN_DAYS && <span className="ml-2 rounded bg-open-bg px-1.5 text-open">decide now: holds usually expire around day 7</span>}
+      </dd>
+    </>
+  );
+}
+
+function InquiryCard({ i, actions, hold }: { i: InquiryRow; actions?: React.ReactNode; hold?: CheckoutRow | null }) {
   const links = JSON.parse(i.listing_links) as string[];
   return (
     <li className="rounded-xl border border-line bg-white p-4">
@@ -34,6 +49,7 @@ function InquiryCard({ i, actions }: { i: InquiryRow; actions?: React.ReactNode 
         {i.notes && (<><dt className="text-muted">Notes</dt><dd>{i.notes}</dd></>)}
         <dt className="text-muted">Marketing opt-in</dt><dd>{i.marketing_consent ? "yes" : "no"}</dd>
         {i.decision_note && (<><dt className="text-muted">Decision</dt><dd>{i.decided_by}: {i.decision_note}</dd></>)}
+        {hold !== null && <HoldLine hold={hold} />}
       </dl>
       {actions && <div className="mt-4 grid gap-4 border-t border-line pt-4 md:grid-cols-2">{actions}</div>}
     </li>
@@ -50,6 +66,8 @@ export default async function AdminPage() {
   const outbox = await db.all("SELECT * FROM email_outbox ORDER BY created_at DESC LIMIT 25") as Outbox[];
   const funnel = await funnelSummary(effectiveMode() === "preview");
   const readiness = salesReadiness();
+  const holdRows = await db.all("SELECT * FROM checkouts WHERE purpose='hold' AND status='authorized'") as CheckoutRow[];
+  const holds = new Map(holdRows.map((h) => [h.inquiry_id, h]));
 
   return (
     <main id="main" className="container-page space-y-12 py-10">
@@ -66,7 +84,12 @@ export default async function AdminPage() {
         {pending.length === 0 ? <p className="mt-2 text-muted">Nothing waiting.</p> : (
           <ul className="mt-4 space-y-4">
             {pending.map((i) => (
-              <InquiryCard key={i.id} i={i} actions={<><ApproveForm id={i.id} /><DeclineForm id={i.id} /></>} />
+              <InquiryCard
+                key={i.id}
+                i={i}
+                hold={holds.get(i.id)}
+                actions={<><ApproveForm id={i.id} label={holds.has(i.id) ? `Approve and charge ${formatMoney(holds.get(i.id)!.amount_cents)}` : undefined} /><DeclineForm id={i.id} label={holds.has(i.id) ? "Decline, release hold, and notify" : undefined} /></>}
+              />
             ))}
           </ul>
         )}
@@ -99,7 +122,7 @@ export default async function AdminPage() {
         <h2 id="approved-h" className="text-[1.4rem] font-medium">Approved, not yet paid ({approved.length})</h2>
         <ul className="mt-4 space-y-4">
           {approved.map((i) => (
-            <InquiryCard key={i.id} i={i} actions={<><ApproveForm id={i.id} label="Send a new link (old link stops working)" /><DeclineForm id={i.id} /></>} />
+            <InquiryCard key={i.id} i={i} hold={null} actions={<><ApproveForm id={i.id} label="Send a new link (old link stops working)" /><DeclineForm id={i.id} /></>} />
           ))}
         </ul>
       </section>
@@ -138,7 +161,7 @@ export default async function AdminPage() {
       <section aria-labelledby="closed-h">
         <h2 id="closed-h" className="text-[1.4rem] font-medium">Declined and not eligible</h2>
         <ul className="mt-4 space-y-4">
-          {closed.map((i) => <InquiryCard key={i.id} i={i} actions={<DeleteForm id={i.id} />} />)}
+          {closed.map((i) => <InquiryCard key={i.id} i={i} hold={null} actions={<DeleteForm id={i.id} />} />)}
         </ul>
       </section>
 
