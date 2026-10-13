@@ -320,7 +320,7 @@ export function EligibilityForm({
 
       <div>
         <button type="submit" className="btn-primary w-full sm:w-auto" disabled={submitting || redirecting} aria-disabled={submitting || redirecting}>
-          {redirecting ? "Opening secure card page…" : submitting ? "Sending…" : holds ? "Continue to card hold" : "Send for review"}
+          {redirecting ? "Opening secure card page…" : submitting ? "Sending…" : holds ? "Continue to payment" : "Send for review"}
         </button>
         <p className="mt-3 text-[0.9375rem] text-muted" aria-live="polite">
           {mode === "interest"
