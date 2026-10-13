@@ -286,7 +286,7 @@ export function EligibilityForm({ formToken, mode, privacyHref = "/privacy" }: {
         <legend className="px-1 font-semibold">Before you send</legend>
         <p className="text-[0.9375rem] text-muted">
           We use your details only to see if we can help, to follow up with you, and to do the work if you hire us. We never sell
-          them. <Link className="text-link" href={privacyHref}>Read our privacy notice</Link>.
+          your information. <Link className="text-link" href={privacyHref}>Read our privacy notice</Link>.
         </p>
         <Checkbox name="authorizationConfirmed" checked={v.authorizationConfirmed} onChange={set("authorizationConfirmed")} error={errors.authorizationConfirmed}>
           I own this home or am authorized by the owner to make this request.
