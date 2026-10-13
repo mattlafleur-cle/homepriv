@@ -118,7 +118,7 @@ function FloorPlan() {
 export function StrangerExample() {
   return (
     <section aria-labelledby="stranger-title">
-      <div className="container-page py-16 md:py-24">
+      <div className="container-page py-10 md:py-14">
         <div className="max-w-3xl">
           <p className="eyebrow">An example listing</p>
           <h2 id="stranger-title" className="mt-3 text-[2rem] font-medium sm:text-[2.5rem]">
@@ -130,7 +130,7 @@ export function StrangerExample() {
           </p>
         </div>
 
-        <div className="mt-10 rounded-[var(--radius-card)] border border-line bg-paper p-3 shadow-[0_24px_60px_-40px_rgba(31,74,61,0.55)] sm:p-4">
+        <div className="mt-8 rounded-[var(--radius-card)] border border-line bg-paper p-3 shadow-[0_24px_60px_-40px_rgba(31,74,61,0.55)] sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-sage px-2.5 py-0.5 text-[0.8rem] font-semibold text-evergreen">Off market</span>

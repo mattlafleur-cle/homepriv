@@ -81,7 +81,7 @@ export default function Home() {
 
         {/* 1. Hero */}
         <section className="relative overflow-hidden">
-          <div className="container-page grid items-center gap-12 pb-16 pt-10 md:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pb-24">
+          <div className="container-page grid items-center gap-10 pb-10 pt-6 md:pt-8 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pb-14">
             <div>
               <p className="eyebrow">Home photo removal, handled for you</p>
               <h1 className="mt-4 text-[2.4rem] font-medium sm:text-[3.1rem] lg:text-[3.6rem]">
@@ -103,7 +103,7 @@ export default function Home() {
 
         {/* 2. Problem recognition */}
         <section className="border-y border-line bg-paper" aria-labelledby="problem-title">
-          <div className="container-page grid gap-10 py-16 md:py-24 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <div className="container-page grid gap-10 py-10 md:py-14 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <div>
               <h2 id="problem-title" className="text-[2rem] font-medium sm:text-[2.5rem]">
                 The listing ended. The photos didn&apos;t necessarily disappear.
@@ -132,7 +132,7 @@ export default function Home() {
 
         {/* 3. Why hire us */}
         <section aria-labelledby="why-title">
-          <div className="container-page py-16 md:py-24">
+          <div className="container-page py-10 md:py-14">
             <div className="max-w-3xl">
               <p className="eyebrow">Why hire us</p>
               <h2 id="why-title" className="mt-3 text-[2rem] font-medium sm:text-[2.5rem]">
@@ -181,10 +181,10 @@ export default function Home() {
 
         {/* 4. Three steps */}
         <section id="how-it-works" className="bg-evergreen text-white" aria-labelledby="steps-title">
-          <div className="container-page py-16 md:py-24">
+          <div className="container-page py-10 md:py-14">
             <p className="eyebrow !text-[#f0c9a6]">How it works</p>
             <h2 id="steps-title" className="mt-3 max-w-2xl text-[2rem] font-medium sm:text-[2.5rem]">Three steps, and you only do the first one.</h2>
-            <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
+            <ol className="mt-8 grid gap-10 md:grid-cols-3 md:gap-8">
               {[
                 {
                   t: "Tell us about your home",
@@ -217,7 +217,7 @@ export default function Home() {
 
         {/* 5. Offer */}
         <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20">
-          <div id="whats-included" className="container-page scroll-mt-24 py-16 md:py-24">
+          <div id="whats-included" className="container-page scroll-mt-24 py-10 md:py-14">
             <div className="max-w-2xl">
               <p className="eyebrow">One clear offer</p>
               <h2 id="pricing-title" className="mt-3 text-[2rem] font-medium sm:text-[2.5rem]">One home. One price. Paid once.</h2>
@@ -301,7 +301,7 @@ export default function Home() {
 
         {/* 6. Evidence */}
         <section className="border-y border-line bg-paper" aria-labelledby="evidence-title">
-          <div className="container-page py-16 md:py-24">
+          <div className="container-page py-10 md:py-14">
             <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:gap-16">
               <div>
                 <p className="eyebrow">What you&apos;ll see</p>
@@ -365,7 +365,7 @@ export default function Home() {
 
         {/* 7. Assurance */}
         <section aria-labelledby="assurance-title">
-          <div className="container-page py-16 md:py-24">
+          <div className="container-page py-10 md:py-14">
             <div className="mx-auto max-w-3xl rounded-[var(--radius-card)] border border-line bg-paper p-6 sm:p-10">
               {!confirmed && (
                 <p className="mb-4 inline-flex rounded-full bg-wait-bg px-3 py-1 text-[0.875rem] font-semibold text-wait">
@@ -395,7 +395,7 @@ export default function Home() {
 
         {/* 8. FAQ */}
         <section id="faq" className="border-t border-line bg-paper" aria-labelledby="faq-title">
-          <div className="container-page grid gap-10 py-16 md:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <div className="container-page grid gap-10 py-10 md:py-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
             <div>
               <h2 id="faq-title" className="text-[2rem] font-medium sm:text-[2.5rem]">Questions people ask</h2>
               <p className="mt-4 text-muted">Something else on your mind? Ask in your request and we&apos;ll answer before you pay.</p>
@@ -406,7 +406,7 @@ export default function Home() {
 
         {/* 9. Agents */}
         <section id="agents" className="bg-sand/60" aria-labelledby="agents-title">
-          <div className="container-page grid gap-10 py-16 md:py-20 lg:grid-cols-[1fr_1fr] lg:gap-16">
+          <div className="container-page grid gap-10 py-10 md:py-14 lg:grid-cols-[1fr_1fr] lg:gap-16">
             <div>
               <p className="eyebrow">For real estate agents</p>
               <h2 id="agents-title" className="mt-3 text-[1.75rem] font-medium sm:text-[2.1rem]">A closing gift for clients who value privacy.</h2>
@@ -422,7 +422,7 @@ export default function Home() {
 
         {/* 10. Final CTA */}
         <section aria-labelledby="final-title" id="final-cta">
-          <div className="container-page py-16 text-center md:py-24">
+          <div className="container-page py-10 text-center md:py-14">
             <h2 id="final-title" className="mx-auto max-w-3xl text-[2.1rem] font-medium sm:text-[2.75rem]">
               Find out what&apos;s still out there, and let someone else handle it.
             </h2>
